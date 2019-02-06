@@ -5,13 +5,14 @@
 int main(int argc, char *argv[])
 {
 	// test byte order
-	int tmp = 1;
-	uchar *pTmp = (uchar *)&tmp;
-	bool bigEndian = ((*pTmp)==0);
+	//int tmp = 1;
+	//uchar *pTmp = (uchar *)&tmp;
+	//bool bigEndian = ((*pTmp)==0);
 
-	qDebug()<<"bigEndian: "<<bigEndian;
-	qDebug()<<"Size of long: "<<sizeof(long);
-	qDebug()<<"Size of double: "<<sizeof(double);
+	//qDebug()<<"bigEndian: "<<bigEndian;
+	//qDebug()<<"Size of long: "<<sizeof(long);
+	//qDebug()<<"Size of double: "<<sizeof(double);
+	//qDebug() << "Size of uint32_t: " << sizeof(uint32_t);
 
 	QTextCodec::setCodecForLocale(QTextCodec::codecForName("gb2312"));
 	QApplication a(argc, argv);

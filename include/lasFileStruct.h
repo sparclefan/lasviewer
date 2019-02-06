@@ -4,18 +4,20 @@
 #ifndef _LAS_FILE_STRUCT_H_SPARCLE_2018_12_14
 #define _LAS_FILE_STRUCT_H_SPARCLE_2018_12_14
 
+#include <stdint.h>
+
 namespace YupontLasFile {
 		
 #pragma  pack (push,1) 
 	struct LasHeader
 	{
 		char m_signature[4];											//LASF		
-		unsigned short m_sourceId;									//	
-		unsigned short m_encoding;
+		uint16_t m_sourceId;									//	
+		uint16_t m_encoding;
 
-		unsigned long  m_projectId1;									//			
-		unsigned short m_projectId2;
-		unsigned short m_projectId3;
+		uint32_t  m_projectId1;									//			
+		uint16_t m_projectId2;
+		uint16_t m_projectId3;
 		unsigned char m_projectId4[8];
 
 		unsigned char m_versionMajor;									//大版本号		
@@ -23,17 +25,17 @@ namespace YupontLasFile {
 
 		char m_systemId[32];											//系统号		
 		char m_softwareId[32];											//软件号		
-		unsigned short m_createDOY;										//创建日		
-		unsigned short m_createYear;									//创建年	
-		unsigned short m_headerSize;									//文件头大小	
-		unsigned long m_dataOffset;										//数据位置
-		unsigned long m_recordsCount;									//变长区域VariableRecord数量
+		uint16_t m_createDOY;										//创建日		
+		uint16_t m_createYear;									//创建年	
+		uint16_t m_headerSize;									//文件头大小	
+		uint32_t m_dataOffset;										//数据位置
+		uint32_t m_recordsCount;									//变长区域VariableRecord数量
 
 		unsigned char m_pointDataFormatId;								//点云数据格式ID Point Data Format ID
 		unsigned short m_pointDataRecordLength;							//Point Data Record Length
 
-		unsigned long m_pointRecordsCount;								//点的数量	
-		unsigned long m_lasHeaderNumOfReturns[5];						//回波次数
+		uint32_t m_pointRecordsCount;								//点的数量	
+		uint32_t m_lasHeaderNumOfReturns[5];						//回波次数
 		
 		double m_xScaleFactor;
 		double m_yScaleFactor;
@@ -53,7 +55,7 @@ namespace YupontLasFile {
 	//--------------------------------------
 	struct VariLenRecord
 	{
-		unsigned short reserved;
+		uint16_t reserved;
 		char userId[16];
 		unsigned short recordId;
 		unsigned short recordLen;
@@ -63,32 +65,32 @@ namespace YupontLasFile {
 	//--- GeoTiFF format -----------
 	struct sKeyEntry
 	{
-		unsigned short wKeyID;
-		unsigned short wTIFFTagLocation;
-		unsigned short wCount;
-		unsigned short wValue_Offset;
+		uint16_t wKeyID;
+		uint16_t wTIFFTagLocation;
+		uint16_t wCount;
+		uint16_t wValue_Offset;
 	};
 	struct sGeoKeys         // LASF_Projection 34735
 	{
-		unsigned short wKeyDirectoryVersion;
-		unsigned short wKeyRevision;
-		unsigned short wMinorRevision;
-		unsigned short wNumberOfKeys;
+		uint16_t wKeyDirectoryVersion;
+		uint16_t wKeyRevision;
+		uint16_t wMinorRevision;
+		uint16_t wNumberOfKeys;
 	};
 
 	//--------------------------------------------
 
 	struct RGB
 	{
-		unsigned short red;                //      2
-		unsigned short green;              //      2
-		unsigned short blue;               //      2   
+		uint16_t red;                //      2
+		uint16_t green;              //      2
+		uint16_t blue;               //      2   
 	};
 
 	struct Wave{
 		unsigned char wavepacket;          //28      1
-		unsigned long long  offsetovaform; //29-36   8      1 
-		unsigned long  waveform;           //37-40  4
+		uint64_t  offsetovaform; //29-36   8      1 
+		uint32_t  waveform;           //37-40  4
 		float returnpoint;                 //41-44   4   13
 		float xt;                          //4
 		float yt;                          //4
@@ -97,15 +99,15 @@ namespace YupontLasFile {
 
 	struct Pos
 	{
-		long  X;                        //0-3         4                                      //0-3
-		long  Y;                        //4-7         4                                         //4-7
-		long  Z;                        //8-11        4      
+		int32_t  X;                        //0-3         4                                      //0-3
+		int32_t  Y;                        //4-7         4                                         //4-7
+		int32_t  Z;                        //8-11        4      
 	};
 
 	struct PointFormat0
 	{
 		Pos m_position;				  //0-11
-		unsigned short int	m_intensity;      //12-13       2                           
+		uint16_t	m_intensity;      //12-13       2                           
 		unsigned char  m_returnNumber : 3;          //14          1                               //14
 		unsigned char  m_numOfReturns : 3;
 		unsigned char  m_scanDir : 1;
@@ -113,7 +115,7 @@ namespace YupontLasFile {
 		unsigned char  m_classification;  //15          1         
 		char m_scanAngle;                 //16          1  
 		unsigned char m_userData;         //17         1  
-		unsigned short m_PointSourceID;   //18 -19       2
+		uint16_t m_PointSourceID;   //18 -19       2
 	};
 
 	struct PointFormat1
@@ -151,12 +153,12 @@ namespace YupontLasFile {
 	struct PointFormat6
 	{
 		Pos m_pos;
-		unsigned short int	m_intensity;       //12-13        2                                   
+		uint16_t	m_intensity;       //12-13        2                                   
 		unsigned char   m_other[2];        //14-15        2                            
 		unsigned char  m_classification;   //16           1    
 		unsigned char m_userData;          //17           1  
 		short m_scanAngle;                 //18-19        2  
-		unsigned short m_PointSourceID;    //20 -21       2
+		uint16_t m_PointSourceID;    //20 -21       2
 		double m_gpstime;   ///            //22-29        8
 	};
 	struct PointFormat7
