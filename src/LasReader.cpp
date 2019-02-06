@@ -1,17 +1,28 @@
 #include "LasReader.h"
 #include <QTime>
 	
+#define reversbytes32(d)	( (((d)<<24)&0xff000000)|(((d)<<8)&0xff0000)|(((d)>>8)&0xff00)|(((d)>>24)&0xff) )
+#define reversbytes16(d) ( (((d)<<8)&0xff00)|(((d)>>8)&0xff) )
+
 using namespace YupontLasFile;
 
 LasReader::LasReader(QString &filepath)
 	: m_thinfactor(0), m_maxInten(0), m_minInten(0)
 {
+	// test byte order
+	int tmp = 1;
+	uchar *pTmp = (uchar *)&tmp;
+	m_bigEndian = ((*pTmp)==0);
+
 	m_pFile = new QFile(filepath);
 
 	m_pFile->open(QIODevice::ReadWrite);
 	m_pMap = m_pFile->map(0, m_pFile->size());
 
-	m_pHeader = (YupontLasFile::LasHeader *)m_pMap;
+	m_pHeader = (YupontLasFile::LasHeader *)m_pMap;		
+	memcpy(&m_header, m_pHeader, sizeof m_header);
+	adjustHeaderByteOrder();
+
 }
 
 LasReader::~LasReader()
@@ -26,9 +37,60 @@ LasReader::~LasReader()
 	delete m_pFile;
 }
 
+double LasReader::reversBytesDouble(double d)
+{
+	double rt;
+	uchar *pSrc = (uchar *)&d;
+	uchar *pDst = (uchar *)&rt;
+
+	int size = sizeof(double);
+	for(int i=0; i<size; i++)
+	{
+		pDst[i] = pSrc[size-i-1];
+	}
+
+	return rt;
+}
+
+void LasReader::adjustHeaderByteOrder()
+{
+	if(m_bigEndian){
+		m_header.m_sourceId = reversbytes16(m_header.m_sourceId);		
+		m_header.m_encoding = reversbytes16(m_header.m_encoding);
+
+		m_header.m_createDOY = reversbytes16(m_header.m_createDOY);		
+		m_header.m_createYear = reversbytes16(m_header.m_createYear);
+		m_header.m_headerSize = reversbytes16(m_header.m_headerSize);
+		m_header.m_dataOffset = reversbytes32(m_header.m_dataOffset);	
+		m_header.m_recordsCount = reversbytes32(m_header.m_recordsCount);
+		m_header.m_pointDataRecordLength = reversbytes16(m_header.m_pointDataRecordLength);
+
+		m_header.m_pointRecordsCount = reversbytes32(m_header.m_pointRecordsCount);
+		for(int i=0; i<5; i++){
+			m_header.m_lasHeaderNumOfReturns[i] = reversbytes32(m_header.m_lasHeaderNumOfReturns[i]);
+		}						
+		
+		m_header.m_xScaleFactor = reversBytesDouble(m_header.m_xScaleFactor);
+		m_header.m_yScaleFactor = reversBytesDouble(m_header.m_yScaleFactor);
+		m_header.m_zScaleFactor = reversBytesDouble(m_header.m_zScaleFactor);
+		m_header.m_xOffset = reversBytesDouble(m_header.m_xOffset);
+		m_header.m_yOffset = reversBytesDouble(m_header.m_yOffset);
+		m_header.m_zOffset = reversBytesDouble(m_header.m_zOffset);
+
+		m_header.m_maxX = reversBytesDouble(m_header.m_maxX);
+		m_header.m_minX = reversBytesDouble(m_header.m_minX);
+		m_header.m_maxY = reversBytesDouble(m_header.m_maxY);
+		m_header.m_minY = reversBytesDouble(m_header.m_minY);
+		m_header.m_maxZ = reversBytesDouble(m_header.m_maxZ);
+		m_header.m_minZ = reversBytesDouble(m_header.m_minZ);
+		
+	}
+}
+
+
 YupontLasFile::LasHeader *LasReader::getHeader()
 {
-	return m_pHeader;
+	return &m_header;
 }
 
 void LasReader::run()
@@ -37,33 +99,53 @@ void LasReader::run()
 	t.start();
 	std::map<int, osg::ref_ptr<PointCloudLayer>>().swap(m_layers);
 
-	uchar *pPoints = (((uchar *)m_pHeader) + m_pHeader->m_dataOffset);
+	uchar *pPoints = (((uchar *)m_pHeader) + m_header.m_dataOffset);
 	YupontLasFile::PointFormat0 *pPoint = (YupontLasFile::PointFormat0 *)pPoints;
 
-	m_maxInten = pPoint->m_intensity;
-	m_minInten = pPoint->m_intensity;
+	unsigned short int intensity = pPoint->m_intensity;
+	if (m_bigEndian){
+		intensity = reversbytes16(intensity);
+	}
+
+	m_maxInten = intensity;
+	m_minInten = intensity;
 
 	size_t offset = 0;
-	size_t ptsize = m_pHeader->m_pointDataRecordLength;
-	for (unsigned long i = 0; i < m_pHeader->m_pointRecordsCount; i += m_thinfactor, offset += (ptsize*m_thinfactor))
+	size_t ptsize = m_header.m_pointDataRecordLength;
+	for (unsigned long i = 0; i < m_header.m_pointRecordsCount; i += m_thinfactor, offset += (ptsize*m_thinfactor))
 	{
 		pPoint = (YupontLasFile::PointFormat0 *)(pPoints + offset);
-		if (pPoint->m_intensity > m_maxInten)
-			m_maxInten = pPoint->m_intensity;
-		if (pPoint->m_intensity < m_minInten)
-			m_minInten = pPoint->m_intensity;
+		intensity = pPoint->m_intensity;
+		if(m_bigEndian){
+			intensity = reversbytes16(intensity);
+		}
+
+		if (intensity > m_maxInten)
+			m_maxInten = intensity;
+		if (intensity < m_minInten)
+			m_minInten = intensity;			
 	}
 
 	//qDebug("Time elapsed: %d ms", t.elapsed());
 
 	offset = 0;
 	int percent = 0;
-	for (unsigned long i = 0; i < m_pHeader->m_pointRecordsCount; i += m_thinfactor, offset += (ptsize * m_thinfactor))
+	YupontLasFile::PointFormat0 tmpPoint;
+	for (unsigned long i = 0; i < m_header.m_pointRecordsCount; i += m_thinfactor, offset += (ptsize * m_thinfactor))
 	{
 		pPoint = (YupontLasFile::PointFormat0 *)(pPoints + offset);
-		double x = (m_pHeader->m_xScaleFactor * pPoint->m_position.X + m_pHeader->m_xOffset) - m_pHeader->m_minX;
-		double y = (m_pHeader->m_yScaleFactor * pPoint->m_position.Y + m_pHeader->m_yOffset) - m_pHeader->m_minY;
-		double z = (m_pHeader->m_zScaleFactor * pPoint->m_position.Z + m_pHeader->m_zOffset) - m_pHeader->m_minZ;
+		if(m_bigEndian)
+		{
+			memcpy(&tmpPoint, pPoint, sizeof tmpPoint);
+			tmpPoint.m_position.X = reversbytes32(tmpPoint.m_position.X);
+			tmpPoint.m_position.Y = reversbytes32(tmpPoint.m_position.Y);
+			tmpPoint.m_position.Z = reversbytes32(tmpPoint.m_position.Z);
+			pPoint = &tmpPoint;
+		}
+
+		double x = (m_header.m_xScaleFactor * pPoint->m_position.X + m_header.m_xOffset) - m_header.m_minX;
+		double y = (m_header.m_yScaleFactor * pPoint->m_position.Y + m_header.m_yOffset) - m_header.m_minY;
+		double z = (m_header.m_zScaleFactor * pPoint->m_position.Z + m_header.m_zOffset) - m_header.m_minZ;
 
 		int classify = (int)pPoint->m_classification;
 		osg::ref_ptr<PointCloudLayer> pcl;

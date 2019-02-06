@@ -33,12 +33,17 @@ private:
 	QFile *m_pFile;
 	uchar *m_pMap;
 
+	bool m_bigEndian;
 	int m_thinfactor;
 	double m_maxInten;
 	double m_minInten;
 	YupontLasFile::LasHeader *m_pHeader;
+	YupontLasFile::LasHeader m_header;
 
 	std::map<int, osg::ref_ptr<PointCloudLayer>> m_layers;
+
+	double reversBytesDouble(double d);
+	void adjustHeaderByteOrder();
 
 };
 	
