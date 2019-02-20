@@ -163,6 +163,9 @@ void LasReader::run()
 		double factor = (pPoint->m_intensity - m_minInten) / (m_maxInten - m_minInten);
 		pcl->m_intentFactors.push_back(factor);
 
+		factor = z / (m_header.m_maxZ - m_header.m_minZ);
+		pcl->m_altitudeFactors.push_back(factor);
+
 		pcl->pointNumber++;
 
 		int newpercent = i * 100 / m_pHeader->m_pointRecordsCount;

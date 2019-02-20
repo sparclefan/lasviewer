@@ -52,10 +52,14 @@ const ClassifyCfg classifyColor[] = {
 const int classifyColorNum = sizeof(classifyColor) / sizeof(ClassifyCfg);
 
 MainWindow::MainWindow()
-	:QMainWindow(), m_colorMode(0), m_workPath(""), m_thinFactor(10), m_lasReader(NULL)
+	:QMainWindow(), m_workPath(""), m_thinFactor(10), m_lasReader(NULL)
 {
 	ui = new Ui::MainWindow();
 	ui->setupUi(this);
+
+	m_dlgLasInfo = new DlgLasInfo(this);
+
+	tabifyDockWidget(ui->dock_classify, ui->dock_options);
 
 	readSetting();
 
@@ -72,15 +76,18 @@ MainWindow::MainWindow()
 	m_progress->setMaximum(100);
 	ui->statusbar->addPermanentWidget(m_progress);
 
-	drawColorPalette();
+	drawColorPalette(ui->lb_intentColor, 0);
+	drawColorPalette(ui->lb_altitudeColor, 0);
 
 	connect(this, SIGNAL(intentRangeChanged(int,int)), this, SLOT(on_intentRangeChanged(int,int)));
-	connect(ui->gb_intentColor, SIGNAL(toggled(bool)), this, SLOT(on_intentColorChecked(bool)));
-	connect(ui->gb_classify, SIGNAL(toggled(bool)), this, SLOT(on_classifyColorChecked(bool)));
+	connect(this, SIGNAL(altitudeRangeChanged(int, int)), this, SLOT(on_altitudeRangeChanged(int, int)));
 	connect(ui->cb_colorMode, SIGNAL(currentIndexChanged(int)), this, SLOT(on_colorModeChanged(int)));
+	connect(ui->cb_IndentColorSet, SIGNAL(currentIndexChanged(int)), this, SLOT(on_IntentColorSetChanged(int)));
+	connect(ui->cb_AltitudeColorSet, SIGNAL(currentIndexChanged(int)), this, SLOT(on_AltitudeColorSetChanged(int)));
 	connect(ui->cb_pointSize, SIGNAL(currentIndexChanged(int)), this, SLOT(on_pointSizeChanged(int)));
 	connect(ui->cb_thinning, SIGNAL(currentIndexChanged(int)), this, SLOT(on_thinFactorChanged(int)));
 	connect(ui->tableWidget, SIGNAL(cellChanged(int,int)), this, SLOT(on_tableCellChanged(int, int)));
+	connect(m_dlgLasInfo, SIGNAL(hideDlg()), this, SLOT(on_dlgLasInfoHide()));
 
 	PointsGeode = new osg::Geode();
 	PointAttr = new osg::Point();
@@ -120,9 +127,9 @@ void MainWindow::writeSetting()
 	settings.endGroup();
 }
 
-void MainWindow::drawColorPalette()
+void MainWindow::drawColorPalette(QLabel *pal, int mode)
 {
-	QSize size = ui->lb_intentColor->size();
+	QSize size = pal->size();
 	QPixmap image(size);
 	QPainter painter(&image);
 	float L = 1.0;
@@ -130,12 +137,12 @@ void MainWindow::drawColorPalette()
 	float r, g, b;
 	for (int i = 0; i < size.width(); i++)
 	{
-		float H = caculateColorH((float)i / size.width(), m_colorMode);
+		float H = caculateColorH((float)i / size.width(), mode);
 		HSL2RGB(H, L, S, r, g, b);
 		painter.setPen(QColor(r*255.0, g*255.0, b*255.0));
 		painter.drawLine(i, 0, i, size.height());
 	}
-	ui->lb_intentColor->setPixmap(image);
+	pal->setPixmap(image);
 }
 
 void MainWindow::clearPointsData()
@@ -144,47 +151,57 @@ void MainWindow::clearPointsData()
 	ui->tableWidget->clearContents();
 }
 
-void MainWindow::on_colorModeChanged(int id)
+void MainWindow::on_dlgLasInfoHide()
 {
-	m_colorMode = id;
-	drawColorPalette();
-
-	for (auto it : m_layers)
-	{
-		osg::ref_ptr<PointCloudLayer> layer = it.second;
-		layer->setIntentColor((IntentColorCallBack)(&MainWindow::getIntentColor), m_colorMode);
-	}
-
-	if (m_osgViewer)
-		m_osgViewer->requestRedraw();
-
+	ui->actionLasInfo->setChecked(false);
 }
 
-void MainWindow::on_classifyColorChecked(bool on)
+void MainWindow::on_actionLasInfo_triggered()
+{
+	m_dlgLasInfo->setVisible(ui->actionLasInfo->isChecked());
+}
+
+void MainWindow::on_colorModeChanged(int id)
 {
 	for (auto it : m_layers)
 	{
-		int classify = it.first;
 		osg::ref_ptr<PointCloudLayer> layer = it.second;
-		if (on)
+		int classify = it.first;
+		int classid = classify > 31 ? 31 : classify;
+		switch (id)
 		{
-			int id = classify>31 ? 31 : classify;
-			layer->setOverallColor(classifyColor[id].color);
-		}
-		else{
-			if (ui->gb_intentColor->isChecked()){
-				layer->setIntentColor((IntentColorCallBack)(&MainWindow::getIntentColor), m_colorMode);
+			case 0: // 强度
+				layer->setIntentColor((IntentColorCallBack)(&MainWindow::getIntentColor), ui->cb_IndentColorSet->currentIndex());
+				break;
+			case 1: // 高程
+				layer->setAltitudeColor((IntentColorCallBack)(&MainWindow::getIntentColor), ui->cb_AltitudeColorSet->currentIndex());
+				break;
+			case 2: // 高程+强度
+				layer->setBlendColor((BlendColorCallBack)(&MainWindow::getBlendColor),
+					ui->cb_IndentColorSet->currentIndex(), ui->cb_AltitudeColorSet->currentIndex());
+				break;
+			case 3: // 分类
+				layer->setOverallColor(classifyColor[classid].color);
+				break;
+			default:
+				layer->setOverallColor(QColor(255, 255, 255));
+				break;
 			}
-			else{
-				layer->setOverallColor(QColor(255,255,255));
-			}
-		}
 	}
-
-	ui->gb_intentColor->setEnabled(!on);
-
 	if (m_osgViewer)
 		m_osgViewer->requestRedraw();
+}
+
+void MainWindow::on_IntentColorSetChanged(int id)
+{
+	drawColorPalette(ui->lb_intentColor, id);
+	on_colorModeChanged(ui->cb_colorMode->currentIndex());
+}
+
+void MainWindow::on_AltitudeColorSetChanged(int id)
+{
+	drawColorPalette(ui->lb_altitudeColor, id);
+	on_colorModeChanged(ui->cb_colorMode->currentIndex());
 }
 
 void MainWindow::on_intentRangeChanged(int minIntent, int maxIntent)
@@ -193,25 +210,10 @@ void MainWindow::on_intentRangeChanged(int minIntent, int maxIntent)
 	ui->lb_maxIntent->setText(QString("%1").arg(maxIntent));
 }
 
-void MainWindow::on_intentColorChecked(bool on)
+void MainWindow::on_altitudeRangeChanged(int minAlt, int maxAlt)
 {
-	if (!on)
-	{
-		for (auto it : m_layers)
-		{
-			osg::ref_ptr<PointCloudLayer> layer = it.second;
-			layer->setOverallColor(QColor(255,255,255));
-		}
-	}
-	else{
-		for (auto it : m_layers)
-		{
-			osg::ref_ptr<PointCloudLayer> layer = it.second;
-			layer->setIntentColor((IntentColorCallBack)(&MainWindow::getIntentColor), m_colorMode);
-		}
-	}
-	if (m_osgViewer)
-		m_osgViewer->requestRedraw();
+	ui->lb_minAltitude->setText(QString("%1").arg(minAlt));
+	ui->lb_maxAltitude->setText(QString("%1").arg(maxAlt));
 }
 
 void MainWindow::on_tableCellChanged(int row, int coloumn)
@@ -301,16 +303,6 @@ void MainWindow::onReadFinished()
 		item->setBackground(classifyColor[id].color);
 		ui->tableWidget->setItem(row, 3, item);
 
-		if (ui->gb_classify->isChecked()){
-			layer->setOverallColor(classifyColor[id].color);
-		}
-		else if (ui->gb_intentColor->isChecked()){
-			layer->setIntentColor((IntentColorCallBack)(&MainWindow::getIntentColor), m_colorMode);
-		}
-		else{
-			layer->setOverallColor(QColor(255, 255, 255));
-		}
-
 		item = new QTableWidgetItem();
 		item->setCheckState(Qt::Checked);
 		ui->tableWidget->setItem(row, 4, item);
@@ -332,6 +324,10 @@ void MainWindow::onReadFinished()
 	root->addChild(PointsGeode.get());
 
 	m_osgViewer->setSceneData(root.get());
+
+	on_colorModeChanged(ui->cb_colorMode->currentIndex());
+
+	emit intentRangeChanged(m_lasReader->getMinIntent(), m_lasReader->getMaxIntent());
 }
 
 void MainWindow::on_thinFactorChanged(int id)
@@ -371,39 +367,9 @@ void MainWindow::on_actionOpen_triggered()
 
 	m_lasReader = new LasReader(filename);
 	YupontLasFile::LasHeader *pHeader = m_lasReader->getHeader();
+	emit altitudeRangeChanged(pHeader->m_minZ, pHeader->m_maxZ);
 
-	if (pHeader->m_recordsCount > 0){
-		YupontLasFile::VariLenRecord *pVarLenRecord = (YupontLasFile::VariLenRecord *)(((uchar *)pHeader) + pHeader->m_headerSize);
-
-		if (pVarLenRecord->recordId == 34735)  // GeoTiff
-		{
-			YupontLasFile::sGeoKeys *pVarData = (YupontLasFile::sGeoKeys *)(((uchar *)pVarLenRecord) + sizeof(YupontLasFile::VariLenRecord));
-		}
-	}
-
-	QString version = QString("%1.%2").arg(pHeader->m_versionMajor).arg(pHeader->m_versionMinor);
-	ui->lb_version->setText(version);
-	char tmpbuf[33];
-	memset(tmpbuf, 0, sizeof tmpbuf);
-	memcpy(tmpbuf, pHeader->m_systemId, 32);
-	ui->lb_systemId->setText(tmpbuf);
-	memcpy(tmpbuf, pHeader->m_softwareId, 32);
-	ui->lb_softwareId->setText(tmpbuf);
-	QDate dt(pHeader->m_createYear, 1, 1);
-	qint64 julianDay = dt.toJulianDay()+pHeader->m_createDOY;
-	QDate dtCreate = QDate::fromJulianDay(julianDay);
-	ui->lb_createDate->setText(dtCreate.toString("yyyy-MM-dd"));
-	ui->lb_formatId->setText(QString("%1").arg((int)pHeader->m_pointDataFormatId));
-	ui->lb_pointCount->setText(QString("%1").arg(pHeader->m_pointRecordsCount));
-	ui->lb_return1->setText(QString("%1").arg(pHeader->m_lasHeaderNumOfReturns[0]));
-	ui->lb_return2->setText(QString("%1").arg(pHeader->m_lasHeaderNumOfReturns[1]));
-	ui->lb_return3->setText(QString("%1").arg(pHeader->m_lasHeaderNumOfReturns[2]));
-	ui->lb_maxX->setText(QString("%1").arg(pHeader->m_maxX, 10, 'f', 3));
-	ui->lb_minX->setText(QString("%1").arg(pHeader->m_minX, 10, 'f', 3));
-	ui->lb_maxY->setText(QString("%1").arg(pHeader->m_maxY, 10, 'f', 3));
-	ui->lb_minY->setText(QString("%1").arg(pHeader->m_minY, 10, 'f', 3));
-	ui->lb_maxZ->setText(QString("%1").arg(pHeader->m_maxZ, 10, 'f', 3));
-	ui->lb_minZ->setText(QString("%1").arg(pHeader->m_minZ, 10, 'f', 3));
+	m_dlgLasInfo->setLasInfo(pHeader);
 
 	loadLasPoints();
 
@@ -417,6 +383,21 @@ QColor MainWindow::getIntentColor(double factor, int mode)
 	float r, g, b;
 	HSL2RGB(H, L, S, r, g, b);
 	return QColor((int)(r*255),(int)(g*255),(int)(b*255));
+}
+
+QColor MainWindow::getBlendColor(double f1, double f2, int mode1, int mode2)
+{
+	float H1 = caculateColorH(f1, mode1); 
+	float H2 = caculateColorH(f2, mode2);
+	float L = 1.0;
+	float S = 0.5;
+	float r1, g1, b1, r2, g2, b2;
+	HSL2RGB(H1, L, S, r1, g1, b1);
+	HSL2RGB(H2, L, S, r2, g2, b2);
+	float r = crCalculateBlend(r1, r2);
+	float g = crCalculateBlend(g2, g2);
+	float b = crCalculateBlend(b1, b2);
+	return QColor((int)(r * 255), (int)(g * 255), (int)(b * 255));
 }
 
 float MainWindow::caculateColorH(float factor, int mode)
@@ -474,4 +455,10 @@ void MainWindow::HSL2RGB(float H, float S, float L, float &R, float &G, float &B
 		G = Hue_2_RGB(var_1, var_2, H);
 		B = Hue_2_RGB(var_1, var_2, H - (1.0 / 3));
 	}
+}
+
+float MainWindow::crCalculateBlend( float c1, float c2)
+{
+	//(c1 * a1 * (1.0 - a2) + c2 ) / (a1 + a2 - a1 * a2);
+	return (c1*0.7 + c2*0.3);
 }
