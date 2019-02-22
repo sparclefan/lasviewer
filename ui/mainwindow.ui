@@ -36,7 +36,6 @@
      <string>文件</string>
     </property>
     <addaction name="actionOpen"/>
-    <addaction name="actionSplit"/>
    </widget>
    <widget class="QMenu" name="menu_2">
     <property name="title">
@@ -114,6 +113,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="dock_options">
+   <property name="minimumSize">
+    <size>
+     <width>295</width>
+     <height>38</height>
+    </size>
+   </property>
    <property name="windowTitle">
     <string>选项</string>
    </property>
@@ -175,7 +180,7 @@
        <x>10</x>
        <y>90</y>
        <width>276</width>
-       <height>100</height>
+       <height>101</height>
       </rect>
      </property>
      <property name="minimumSize">
@@ -379,7 +384,7 @@
       </item>
      </widget>
     </widget>
-    <widget class="QWidget" name="">
+    <widget class="QWidget" name="layoutWidget">
      <property name="geometry">
       <rect>
        <x>24</x>
@@ -427,7 +432,7 @@
       </item>
      </layout>
     </widget>
-    <widget class="QWidget" name="">
+    <widget class="QWidget" name="layoutWidget1">
      <property name="geometry">
       <rect>
        <x>155</x>
@@ -483,6 +488,28 @@
    </property>
    <property name="text">
     <string>Las Info</string>
+   </property>
+  </action>
+  <action name="actionShowClassify">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>点云分类</string>
+   </property>
+  </action>
+  <action name="actionShowOption">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>选项</string>
    </property>
   </action>
  </widget>

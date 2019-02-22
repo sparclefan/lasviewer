@@ -1,10 +1,12 @@
 #include "LasReader.h"
 #include <QTime>
+#include <QFileInfo>
+#include <QDebug>
 	
 #define reversbytes32(d)	( (((d)<<24)&0xff000000)|(((d)<<8)&0xff0000)|(((d)>>8)&0xff00)|(((d)>>24)&0xff) )
 #define reversbytes16(d) ( (((d)<<8)&0xff00)|(((d)>>8)&0xff) )
 
-using namespace YupontLasFile;
+using namespace AsprsLasFile;
 
 LasReader::LasReader(QString &filepath)
 	: m_thinfactor(0), m_maxInten(0), m_minInten(0)
@@ -19,7 +21,7 @@ LasReader::LasReader(QString &filepath)
 	m_pFile->open(QIODevice::ReadWrite);
 	m_pMap = m_pFile->map(0, m_pFile->size());
 
-	m_pHeader = (YupontLasFile::LasHeader *)m_pMap;		
+	m_pHeader = (LasHeader *)m_pMap;		
 	memcpy(&m_header, m_pHeader, sizeof m_header);
 	adjustHeaderByteOrder();
 
@@ -88,7 +90,7 @@ void LasReader::adjustHeaderByteOrder()
 }
 
 
-YupontLasFile::LasHeader *LasReader::getHeader()
+LasHeader *LasReader::getHeader()
 {
 	return &m_header;
 }
@@ -100,7 +102,7 @@ void LasReader::run()
 	std::map<int, osg::ref_ptr<PointCloudLayer>>().swap(m_layers);
 
 	uchar *pPoints = (((uchar *)m_pHeader) + m_header.m_dataOffset);
-	YupontLasFile::PointFormat0 *pPoint = (YupontLasFile::PointFormat0 *)pPoints;
+	PointFormat0 *pPoint = (PointFormat0 *)pPoints;
 
 	unsigned short int intensity = pPoint->m_intensity;
 	if (m_bigEndian){
@@ -114,7 +116,7 @@ void LasReader::run()
 	size_t ptsize = m_header.m_pointDataRecordLength;
 	for (unsigned long i = 0; i < m_header.m_pointRecordsCount; i += m_thinfactor, offset += (ptsize*m_thinfactor))
 	{
-		pPoint = (YupontLasFile::PointFormat0 *)(pPoints + offset);
+		pPoint = (PointFormat0 *)(pPoints + offset);
 		intensity = pPoint->m_intensity;
 		if(m_bigEndian){
 			intensity = reversbytes16(intensity);
@@ -130,10 +132,10 @@ void LasReader::run()
 
 	offset = 0;
 	int percent = 0;
-	YupontLasFile::PointFormat0 tmpPoint;
+	PointFormat0 tmpPoint;
 	for (unsigned long i = 0; i < m_header.m_pointRecordsCount; i += m_thinfactor, offset += (ptsize * m_thinfactor))
 	{
-		pPoint = (YupontLasFile::PointFormat0 *)(pPoints + offset);
+		pPoint = (PointFormat0 *)(pPoints + offset);
 		if(m_bigEndian)
 		{
 			memcpy(&tmpPoint, pPoint, sizeof tmpPoint);
@@ -179,75 +181,208 @@ void LasReader::run()
 	emit processFinished();
 }
 
-void LasReader::splitFile(unsigned long ptNums, QString prefix)
+void LasReader::exportLas(QString fname, ExpParam expParam)
 {
-	unsigned long totalnum = 0;
-	int fileid = 0;
-	while (totalnum < m_pHeader->m_pointRecordsCount)
-	{
-		unsigned long num = (totalnum + ptNums <= m_pHeader->m_pointRecordsCount) ? ptNums : m_pHeader->m_pointRecordsCount - totalnum;
-		
-		size_t filelen = m_pHeader->m_dataOffset + num * m_pHeader->m_pointDataRecordLength;
-		
-		QString fname = QString("%1_%2.las").arg(prefix).arg(fileid,3,10,QLatin1Char('0'));
-		QFile file(fname);
-		file.open(QIODevice::ReadWrite);
-		file.resize(filelen);
-
-		uchar *pMem = file.map(0, filelen);
-		LasHeader *pHeader = (LasHeader *)pMem;
-		uchar *pSrc = (uchar *)m_pHeader;
-
-		memcpy(pMem, pSrc, m_pHeader->m_dataOffset);
-		
-		uchar *pData = pMem + m_pHeader->m_dataOffset;
-		pSrc += (m_pHeader->m_dataOffset + totalnum * m_pHeader->m_pointDataRecordLength);
-
-		memcpy(pData, pSrc, num*m_pHeader->m_pointDataRecordLength);
-
-		PointFormat0 *pPoint = (PointFormat0 *)pData;
-		long lMaxX = pPoint->m_position.X;
-		long lMinX = pPoint->m_position.X;
-		long lMaxY = pPoint->m_position.Y;
-		long lMinY = pPoint->m_position.Y;
-		long lMaxZ = pPoint->m_position.Z;
-		long lMinZ = pPoint->m_position.Z;
-		int returnNumber[5];
-		memset(returnNumber, 0, sizeof returnNumber);
-		for (unsigned long i = 0; i < num; i++){
-			pPoint = (PointFormat0 *)(pData + i*m_pHeader->m_pointDataRecordLength);
-			if (pPoint->m_position.X > lMaxX)
-				lMaxX = pPoint->m_position.X;
-			if (pPoint->m_position.X < lMinX)
-				lMinX = pPoint->m_position.X;
-			if (pPoint->m_position.Y > lMaxY)
-				lMaxY = pPoint->m_position.Y;
-			if (pPoint->m_position.Y < lMinY)
-				lMinY = pPoint->m_position.Y;
-			if (pPoint->m_position.Z > lMaxZ)
-				lMaxZ = pPoint->m_position.Z;
-			if (pPoint->m_position.Z < lMinZ)
-				lMinZ = pPoint->m_position.Z;
-			if (pPoint->m_returnNumber > 0 && pPoint->m_returnNumber < 6){
-				returnNumber[pPoint->m_returnNumber - 1]++;
-			}
-		}
-		pHeader->m_maxX = pHeader->m_xScaleFactor*lMaxX + pHeader->m_xOffset;
-		pHeader->m_minX = pHeader->m_xScaleFactor*lMinX + pHeader->m_xOffset;
-		pHeader->m_maxY = pHeader->m_yScaleFactor*lMaxY + pHeader->m_yOffset;
-		pHeader->m_minY = pHeader->m_yScaleFactor*lMinY + pHeader->m_yOffset;
-		pHeader->m_maxZ = pHeader->m_zScaleFactor*lMaxZ + pHeader->m_zOffset;
-		pHeader->m_minZ = pHeader->m_zScaleFactor*lMinZ + pHeader->m_zOffset;
-		pHeader->m_pointRecordsCount = num;
-		for (int i = 0; i < 5; i++){
-			pHeader->m_lasHeaderNumOfReturns[i] = returnNumber[i];
-		}
-
-		file.unmap(pMem);
-		file.close();
-
-		totalnum += num;
-		fileid++;
+	bool bMinAlt = !isnan(expParam.altitudeMin);
+	bool bMaxAlt = !isnan(expParam.altitudeMax);
+	int32_t altMax, altMin;
+	if (bMinAlt){
+		altMin = (int)((expParam.altitudeMin - m_header.m_zOffset) / m_header.m_zScaleFactor);
 	}
+	if (bMaxAlt){
+		altMax = (int)((expParam.altitudeMax - m_header.m_zOffset) / m_header.m_zScaleFactor);
+	}
+
+	int splitFileId = 0;
+	uint32_t totalnum = 0;
+	QFileInfo fi = QFileInfo(fname);
+
+	QFile *pFile = new QFile(fname);
+	pFile->open(QIODevice::ReadWrite);
+	size_t filelen = m_header.m_dataOffset + m_header.m_pointRecordsCount * m_header.m_pointDataRecordLength;
+	pFile->resize(filelen);
+
+	uchar *pMem = pFile->map(0, filelen);
+	LasHeader *pHeader = (LasHeader *)pMem;
+
+	memcpy(pMem, m_pHeader, m_header.m_dataOffset);
+	uchar *pSrc = (uchar *)m_pHeader + m_header.m_dataOffset;
+
+	uchar *pData = pMem + m_header.m_dataOffset;
+	int32_t maxAlt, minAlt, maxX, maxY, minX, minY;
+	bool minmaxInit = false;
+	int returnNumber[5];
+	memset(returnNumber, 0, sizeof returnNumber);
+
+	for (uint32_t i = 0; i < m_header.m_pointRecordsCount; i++, pSrc += m_header.m_pointDataRecordLength)
+	{
+		PointFormat0 *pPoint = (PointFormat0 *)pSrc;
+		uint16_t intent = pPoint->m_intensity;
+		int32_t altitude = pPoint->m_position.Z;
+		int32_t px = pPoint->m_position.X;
+		int32_t py = pPoint->m_position.Y;
+		if (m_bigEndian){
+			intent = reversbytes16(intent);
+			altitude = reversbytes32(altitude);
+			px = reversbytes32(px);
+			py = reversbytes32(py);
+		}
+		if (((expParam.intentMin > 0) && (intent < expParam.intentMin))
+			|| ((expParam.intentMax>0) && (intent > expParam.intentMax)))
+			continue;
+
+		if((bMinAlt && (altitude<altMin)) || (bMaxAlt && (altitude>altMax)))
+			continue;
+
+		if (minmaxInit){
+			if (altitude < minAlt) minAlt = altitude;
+			if (altitude > maxAlt) maxAlt = altitude;
+			if (px < minX) minX = px;
+			if (px > maxX) maxX = px;
+			if (py < minY) minY = py;
+			if (py > maxY) maxY = py;
+		}
+		else{
+			minAlt = maxAlt = altitude;
+			minX = maxX = px;
+			minY = maxY = py;
+			minmaxInit = true;
+		}
+
+		if (pPoint->m_returnNumber > 0 && pPoint->m_returnNumber < 6){
+			returnNumber[pPoint->m_returnNumber - 1]++;
+		}
+
+		memcpy(pData, pSrc, m_header.m_pointDataRecordLength);
+		pData += m_header.m_pointDataRecordLength;
+		totalnum++;
+
+		if ((expParam.splitPointsNum > 0) && (totalnum == expParam.splitPointsNum)
+			&& (i<(m_header.m_pointRecordsCount-1)))
+		{
+			filelen = m_header.m_dataOffset + totalnum * m_header.m_pointDataRecordLength;
+			if (m_bigEndian){
+				totalnum = reversbytes32(totalnum);
+			}
+			pHeader->m_pointRecordsCount = totalnum;
+			pHeader->m_minX = m_header.m_xScaleFactor*minX + m_header.m_xOffset;
+			pHeader->m_maxX = m_header.m_xScaleFactor*maxX + m_header.m_xOffset;
+			pHeader->m_minY = m_header.m_yScaleFactor*minY + m_header.m_yOffset;
+			pHeader->m_maxY = m_header.m_yScaleFactor*maxY + m_header.m_yOffset;
+			pHeader->m_minZ = m_header.m_zScaleFactor*minAlt + m_header.m_zOffset;
+			pHeader->m_maxZ = m_header.m_zScaleFactor*maxAlt + m_header.m_zOffset;
+
+			for (int j = 0; j < 5; j++){
+				pHeader->m_lasHeaderNumOfReturns[j] = returnNumber[j];
+				returnNumber[j] = 0;
+			}
+
+			pFile->unmap(pMem);
+			pFile->resize(filelen);
+			pFile->close();
+			delete pFile;
+
+			QString nextfile = QString("%1/%2_%3.las").arg(fi.canonicalPath())
+				.arg(fi.completeBaseName()).arg(splitFileId++, 3, 10, QLatin1Char('0'));
+			//qDebug() << nextfile;
+			pFile = new QFile(nextfile);
+			pFile->open(QIODevice::ReadWrite);
+			filelen = m_header.m_dataOffset + m_header.m_pointRecordsCount * m_header.m_pointDataRecordLength;
+			pFile->resize(filelen);
+
+			pMem = pFile->map(0, filelen);
+			pHeader = (LasHeader *)pMem;
+			memcpy(pMem, m_pHeader, m_header.m_dataOffset);
+			pData = pMem + m_header.m_dataOffset;
+			totalnum = 0;
+			minmaxInit = false;
+		}
+	}
+
+	filelen = m_header.m_dataOffset + totalnum * m_header.m_pointDataRecordLength;
+	if (m_bigEndian){
+		totalnum = reversbytes32(totalnum);
+	}
+	pHeader->m_pointRecordsCount = totalnum;
+	pHeader->m_minX = m_header.m_xScaleFactor*minX + m_header.m_xOffset;
+	pHeader->m_maxX = m_header.m_xScaleFactor*maxX + m_header.m_xOffset;
+	pHeader->m_minY = m_header.m_yScaleFactor*minY + m_header.m_yOffset;
+	pHeader->m_maxY = m_header.m_yScaleFactor*maxY + m_header.m_yOffset;
+	pHeader->m_minZ = m_header.m_zScaleFactor*minAlt + m_header.m_zOffset;
+	pHeader->m_maxZ = m_header.m_zScaleFactor*maxAlt + m_header.m_zOffset;
+
+	for (int j = 0; j < 5; j++){
+		pHeader->m_lasHeaderNumOfReturns[j] = returnNumber[j];
+		returnNumber[j] = 0;
+	}
+
+	pFile->unmap(pMem);
+	pFile->resize(filelen);
+	pFile->close();
+	delete pFile;
+
 }
 
+class statisticThread : public QThread
+{
+public:
+	statisticThread(LasReader *pReader) :m_pReader(pReader){};
+
+protected:
+	virtual void run()
+	{
+		m_pReader->statisticImpl();
+	}
+
+private:
+	LasReader *m_pReader;
+};
+
+void LasReader::statistic()
+{
+	statisticThread *t = new statisticThread(this);
+	t->start();
+}
+
+void LasReader::statisticImpl()
+{
+	double stepIntent = (m_maxInten - m_minInten) / 100.0;
+	double stepAlt = (m_pHeader->m_maxZ - m_pHeader->m_minZ) / 100.0;
+	for (int i = 0; i < 100; i++){
+		m_InstentStatistic[i].setX(m_minInten + stepIntent*i);
+		m_InstentStatistic[i].setY(0);
+		m_AltitudeStatistic[i].setX(m_pHeader->m_minZ + stepAlt*i);
+		m_AltitudeStatistic[i].setY(0);
+	}
+
+	uchar *pPoints = (((uchar *)m_pHeader) + m_header.m_dataOffset);
+	PointFormat0 *pPoint = (PointFormat0 *)pPoints;
+
+	size_t offset = 0;
+	size_t ptsize = m_header.m_pointDataRecordLength;
+	for (unsigned long i = 0; i < m_header.m_pointRecordsCount; i ++, offset += ptsize)
+	{
+		pPoint = (PointFormat0 *)(pPoints + offset);
+		int32_t altitude = pPoint->m_position.Z;
+		uint16_t intensity = pPoint->m_intensity;
+		if (m_bigEndian)
+		{
+			altitude = reversbytes32(altitude);
+			intensity = reversbytes16(intensity);
+		}
+		double z = (m_header.m_zScaleFactor * altitude + m_header.m_zOffset);
+
+		int idIntent = (intensity - m_minInten) * 100 / (m_maxInten - m_minInten);
+		if (idIntent < 0) idIntent = 0;
+		if (idIntent > 99) idIntent = 99;
+
+		int idAlt = (z - m_pHeader->m_minZ) * 100 / (m_pHeader->m_maxZ - m_pHeader->m_minZ);
+		if (idAlt < 0) idAlt = 0;
+		if (idAlt > 99) idAlt = 99;
+
+		m_InstentStatistic[idIntent].setY(m_InstentStatistic[idIntent].y() + 1);
+		m_AltitudeStatistic[idAlt].setY(m_AltitudeStatistic[idAlt].y() + 1);
+	}
+
+	emit statisticFinished();
+}

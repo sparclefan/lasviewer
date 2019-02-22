@@ -1,12 +1,21 @@
+#include <QFileDialog>
+#include <QMessageBox>
 #include <QDate>
+#include <QtCharts/QLineSeries>
 #include "DlgLasInfo.h"
 #include "ui_lasinfo.h"
-#include "lasFileStruct.h"
+#include "LasReader.h"
+
+#define Tr(s) QString::fromLocal8Bit(s)
+
+QT_CHARTS_USE_NAMESPACE
 
 DlgLasInfo::DlgLasInfo(QWidget *parent)
-	:QDialog(parent), ui(new Ui::LasInfo)
+	:QDialog(parent), ui(new Ui::LasInfo), m_pLasReader(NULL)
 {
 	ui->setupUi(this);
+	connect(ui->pb_export, SIGNAL(clicked(bool)), this, SLOT(on_export()));
+	connect(ui->pb_statistic, SIGNAL(clicked(bool)), this, SLOT(on_statistic()));
 }
 
 DlgLasInfo::~DlgLasInfo()
@@ -20,14 +29,21 @@ void DlgLasInfo::hideEvent(QHideEvent *event)
 	QDialog::hideEvent(event);
 }
 
-void DlgLasInfo::setLasInfo(YupontLasFile::LasHeader *pHeader)
+void DlgLasInfo::setLasReader(LasReader *lasReader)
+{
+	m_pLasReader = lasReader;
+	setLasInfo(m_pLasReader->getHeader());
+	connect(m_pLasReader, SIGNAL(statisticFinished()), this, SLOT(on_statisticFinished()));
+}
+
+void DlgLasInfo::setLasInfo(AsprsLasFile::LasHeader *pHeader)
 {
 	if (pHeader->m_recordsCount > 0){
-		YupontLasFile::VariLenRecord *pVarLenRecord = (YupontLasFile::VariLenRecord *)(((uchar *)pHeader) + pHeader->m_headerSize);
+		AsprsLasFile::VariLenRecord *pVarLenRecord = (AsprsLasFile::VariLenRecord *)(((uchar *)pHeader) + pHeader->m_headerSize);
 
 		if (pVarLenRecord->recordId == 34735)  // GeoTiff
 		{
-			YupontLasFile::sGeoKeys *pVarData = (YupontLasFile::sGeoKeys *)(((uchar *)pVarLenRecord) + sizeof(YupontLasFile::VariLenRecord));
+			AsprsLasFile::sGeoKeys *pVarData = (AsprsLasFile::sGeoKeys *)(((uchar *)pVarLenRecord) + sizeof(AsprsLasFile::VariLenRecord));
 		}
 	}
 
@@ -54,4 +70,91 @@ void DlgLasInfo::setLasInfo(YupontLasFile::LasHeader *pHeader)
 	ui->lb_minY->setText(QString("%1").arg(pHeader->m_minY, 10, 'f', 3));
 	ui->lb_maxZ->setText(QString("%1").arg(pHeader->m_maxZ, 10, 'f', 3));
 	ui->lb_minZ->setText(QString("%1").arg(pHeader->m_minZ, 10, 'f', 3));
+
+	ui->le_minAltitude->setText(QString("%1").arg(pHeader->m_minZ, 10, 'f', 3));
+	ui->le_maxAltitude->setText(QString("%1").arg(pHeader->m_maxZ, 10, 'f', 3));
+
+}
+
+void DlgLasInfo::on_intentRangeChanged(int minIntent, int maxIntent)
+{
+	ui->le_minIntent->setText(QString("%1").arg(minIntent));
+	ui->le_maxIntent->setText(QString("%1").arg(maxIntent));
+}
+
+void DlgLasInfo::on_export()
+{
+	if (m_pLasReader == NULL){
+		QMessageBox::information(this, Tr("导出las文件"), Tr("没有打开的las文件"));
+		return;
+	}
+
+	QString filename = QFileDialog::getSaveFileName(this, Tr("导出las文件"), "",
+		Tr("las数据文件 (*.las);;All files (*.*)"));
+
+	if (filename.isNull()) return;
+
+	ExpParam param;
+	if (ui->gb_intentFilter->isChecked())
+	{
+		param.intentMin = ui->le_minIntent->text().toInt();
+		param.intentMax = ui->le_maxIntent->text().toInt();
+	}
+	if (ui->gb_altitudeFilter->isChecked())
+	{
+		param.altitudeMin = ui->le_minAltitude->text().toDouble();
+		param.altitudeMax = ui->le_maxAltitude->text().toDouble();
+	}
+	if (ui->gb_splitFile->isChecked())
+	{
+		param.splitPointsNum = ui->le_pointsNum->text().toInt();
+	}
+	m_pLasReader->exportLas(filename, param);
+
+	//int splitPointsNumber = 3000000;
+	//if (ui->gb_splitFile->isChecked())
+	//	splitPointsNumber = ui->le_pointsNum->text().toInt();
+
+	//QFileInfo finfo(filename);
+	//QString prefix = finfo.canonicalPath() + "/" + finfo.completeBaseName();
+
+	//m_pLasReader->splitFile(splitPointsNumber, prefix);
+}
+
+void DlgLasInfo::on_statistic()
+{
+	if (m_pLasReader == NULL)
+		return;
+
+	m_pLasReader->statistic();
+}
+
+void DlgLasInfo::on_statisticFinished()
+{
+	QPointF *points = m_pLasReader->getIntentStatisticData();
+
+	QLineSeries *series = new QLineSeries();
+	for (int i = 0; i < 100; i++)
+		series->append(points[i]);
+
+	QChart *chart = new QChart();
+	chart->legend()->hide();
+	chart->addSeries(series);
+	chart->createDefaultAxes();
+
+	ui->chart_Intent->setRenderHint(QPainter::Antialiasing);
+	ui->chart_Intent->setChart(chart);
+
+	points = m_pLasReader->getAltitudeStatisticData();
+	series = new QLineSeries();
+	for (int i = 0; i < 100; i++)
+		series->append(points[i]);
+	chart = new QChart();
+	chart->legend()->hide();
+	chart->addSeries(series);
+	chart->createDefaultAxes();
+
+	ui->chart_Altitude->setRenderHint(QPainter::Antialiasing);
+	ui->chart_Altitude->setChart(chart);
+
 }

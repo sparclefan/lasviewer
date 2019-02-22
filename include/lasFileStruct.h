@@ -1,12 +1,13 @@
 /**
-	las 文件结构
+	las file format
+	asprs(American Society for Photogrammetry & Remote Sensing) las specification v1.4 R13 - 15 July 2013
 **/
 #ifndef _LAS_FILE_STRUCT_H_SPARCLE_2018_12_14
 #define _LAS_FILE_STRUCT_H_SPARCLE_2018_12_14
 
 #include <stdint.h>
 
-namespace YupontLasFile {
+namespace AsprsLasFile {
 		
 #pragma  pack (push,1) 
 	struct LasHeader

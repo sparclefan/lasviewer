@@ -3,6 +3,7 @@
 #include <QHBoxLayout>
 #include "lasFileStruct.h"
 #include <QFileDialog>
+#include "qchartview.h"
 
 #define Tr(s) QString::fromLocal8Bit(s)
 
@@ -76,6 +77,9 @@ MainWindow::MainWindow()
 	m_progress->setMaximum(100);
 	ui->statusbar->addPermanentWidget(m_progress);
 
+	ui->menu_2->addAction(ui->dock_classify->toggleViewAction());
+	ui->menu_2->addAction(ui->dock_options->toggleViewAction());
+
 	drawColorPalette(ui->lb_intentColor, 0);
 	drawColorPalette(ui->lb_altitudeColor, 0);
 
@@ -88,6 +92,7 @@ MainWindow::MainWindow()
 	connect(ui->cb_thinning, SIGNAL(currentIndexChanged(int)), this, SLOT(on_thinFactorChanged(int)));
 	connect(ui->tableWidget, SIGNAL(cellChanged(int,int)), this, SLOT(on_tableCellChanged(int, int)));
 	connect(m_dlgLasInfo, SIGNAL(hideDlg()), this, SLOT(on_dlgLasInfoHide()));
+	connect(this, SIGNAL(intentRangeChanged(int, int)), m_dlgLasInfo, SLOT(on_intentRangeChanged(int, int)));
 
 	PointsGeode = new osg::Geode();
 	PointAttr = new osg::Point();
@@ -336,20 +341,6 @@ void MainWindow::on_thinFactorChanged(int id)
 	loadLasPoints();
 }
 
-void MainWindow::on_actionSplit_triggered()
-{
-	QString filename = QFileDialog::getOpenFileName(this, Tr("打开激光数据文件"), m_workPath,
-		Tr("las数据文件 (*.las);;All files (*.*)"));
-
-	if (filename.isNull()) return;
-
-	QFileInfo finfo(filename);
-	QString prefix = finfo.canonicalPath() + "/"+finfo.completeBaseName();
-
-	LasReader reader(filename);
-	reader.splitFile(3000000, prefix);
-}
-
 void MainWindow::on_actionOpen_triggered()
 {
 	QString filename = QFileDialog::getOpenFileName(this, Tr("打开激光数据文件"), m_workPath,
@@ -366,10 +357,10 @@ void MainWindow::on_actionOpen_triggered()
 		delete m_lasReader;
 
 	m_lasReader = new LasReader(filename);
-	YupontLasFile::LasHeader *pHeader = m_lasReader->getHeader();
+	AsprsLasFile::LasHeader *pHeader = m_lasReader->getHeader();
 	emit altitudeRangeChanged(pHeader->m_minZ, pHeader->m_maxZ);
 
-	m_dlgLasInfo->setLasInfo(pHeader);
+	m_dlgLasInfo->setLasReader(m_lasReader);
 
 	loadLasPoints();
 

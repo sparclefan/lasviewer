@@ -26,7 +26,6 @@ public:
 public slots:
 	void on_actionLasInfo_triggered();
 	void on_actionOpen_triggered();
-	void on_actionSplit_triggered();
 	void on_intentRangeChanged(int minIntent, int maxIntent);
 	void on_altitudeRangeChanged(int minAlt, int maxAlt);
 	void on_colorModeChanged(int id);

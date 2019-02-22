@@ -4,10 +4,10 @@ cmake_minimum_required (VERSION 3.2)
 project (lasviewer)
 
 #--------- QT ----------------
-find_package(Qt5 REQUIRED Core Gui Widgets OpenGL)
+find_package(Qt5 REQUIRED Core Gui Widgets OpenGL Charts)
 
 #SET(QT_USE_QTOPENGL TRUE)
-link_libraries(Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL)
+link_libraries(Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL Qt5::Charts)
 
 # WinMain入口, 不需要console 
 SET(QT_USE_QTMAIN TRUE) 
