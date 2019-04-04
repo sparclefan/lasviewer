@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	QTextCodec::setCodecForLocale(QTextCodec::codecForName("gb2312"));
 	QApplication a(argc, argv);
 	MainWindow w;
-	w.show();
+	w.showMaximized();
 
 	return a.exec();
 }

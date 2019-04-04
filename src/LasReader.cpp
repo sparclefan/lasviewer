@@ -162,6 +162,24 @@ void LasReader::run()
 
 		pcl->PointsVertices->push_back(osg::Vec3d(x, y, z));
 
+		if (m_header.m_pointDataFormatId == 3)
+		{
+			if (!pcl->PointsRGB.valid())
+			{
+				pcl->PointsRGB = new osg::Vec4Array;
+			}
+			PointFormat3 *ptFormat3 = (PointFormat3 *)pPoint;
+			
+			QColor rgb;
+			if (m_bigEndian){
+				rgb = QColor(reversbytes16(ptFormat3->m_rgb.red), reversbytes16(ptFormat3->m_rgb.green), reversbytes16(ptFormat3->m_rgb.blue));
+			}
+			else{
+				rgb = QColor(ptFormat3->m_rgb.red, ptFormat3->m_rgb.green, ptFormat3->m_rgb.blue);
+			}
+			pcl->PointsRGB->push_back(osg::Vec4(rgb.redF(), rgb.greenF(), rgb.blueF(), 1.0));
+		}
+
 		double factor = (pPoint->m_intensity - m_minInten) / (m_maxInten - m_minInten);
 		pcl->m_intentFactors.push_back(factor);
 
@@ -233,6 +251,22 @@ void LasReader::exportLas(QString fname, ExpParam expParam)
 
 		if((bMinAlt && (altitude<altMin)) || (bMaxAlt && (altitude>altMax)))
 			continue;
+
+		if (expParam.bFiltColor && (m_header.m_pointDataFormatId==3))
+		{
+			PointFormat3 *pF3 = (PointFormat3 *)pPoint;
+			uint16_t r = pF3->m_rgb.red;
+			uint16_t g = pF3->m_rgb.green;
+			uint16_t b = pF3->m_rgb.blue;
+			if (m_bigEndian){
+				r = reversbytes16(r);
+				g = reversbytes16(g);
+				b = reversbytes16(b);
+			}
+			QRgb rgb = QColor(r, g, b).rgb();
+			if (rgb == expParam.filtColor)
+				continue;
+		}
 
 		if (minmaxInit){
 			if (altitude < minAlt) minAlt = altitude;

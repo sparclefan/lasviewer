@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QThread>
 #include <QPointF>
+#include <QRgb>
 #include <QLineSeries>
 #include "lasFileStruct.h"
 #include "PointCloudLayer.h"
@@ -15,8 +16,11 @@ typedef struct _ExpParam{
 	double altitudeMax;
 	double altitudeMin;
 	uint32_t splitPointsNum;
+	bool bFiltColor;
+	QRgb filtColor;
 	_ExpParam() 
-		:intentMax(-1), intentMin(-1), altitudeMax(NAN), altitudeMin(NAN), splitPointsNum(0)
+		:intentMax(-1), intentMin(-1), altitudeMax(NAN), altitudeMin(NAN), 
+		splitPointsNum(0), bFiltColor(false)
 	{}
 } ExpParam;
 

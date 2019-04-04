@@ -103,3 +103,14 @@ void PointCloudLayer::setBlendColor(BlendColorCallBack callback, int modeIntent,
 	PointsGeometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 
 }
+
+void PointCloudLayer::setRGBColor()
+{
+	if (!PointsRGB.valid())
+	{
+		setOverallColor(QColor(100, 100, 100));
+		return;
+	}
+	PointsGeometry->setColorArray(PointsRGB.get());
+	PointsGeometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+}

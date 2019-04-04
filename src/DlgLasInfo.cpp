@@ -14,6 +14,12 @@ DlgLasInfo::DlgLasInfo(QWidget *parent)
 	:QDialog(parent), ui(new Ui::LasInfo), m_pLasReader(NULL)
 {
 	ui->setupUi(this);
+
+	QPalette palette;
+	palette.setColor(QPalette::Background, QColor(100,100,100));
+	ui->lb_defaultColor->setAutoFillBackground(true);
+	ui->lb_defaultColor->setPalette(palette);
+
 	connect(ui->pb_export, SIGNAL(clicked(bool)), this, SLOT(on_export()));
 	connect(ui->pb_statistic, SIGNAL(clicked(bool)), this, SLOT(on_statistic()));
 }
@@ -74,6 +80,8 @@ void DlgLasInfo::setLasInfo(AsprsLasFile::LasHeader *pHeader)
 	ui->le_minAltitude->setText(QString("%1").arg(pHeader->m_minZ, 10, 'f', 3));
 	ui->le_maxAltitude->setText(QString("%1").arg(pHeader->m_maxZ, 10, 'f', 3));
 
+	ui->gb_colorFilter->setEnabled((pHeader->m_pointDataFormatId == 3));
+
 }
 
 void DlgLasInfo::on_intentRangeChanged(int minIntent, int maxIntent)
@@ -108,6 +116,11 @@ void DlgLasInfo::on_export()
 	if (ui->gb_splitFile->isChecked())
 	{
 		param.splitPointsNum = ui->le_pointsNum->text().toInt();
+	}
+	if (ui->gb_colorFilter->isChecked())
+	{
+		param.bFiltColor = true;
+		param.filtColor = ui->lb_defaultColor->palette().background().color().rgb();
 	}
 	m_pLasReader->exportLas(filename, param);
 

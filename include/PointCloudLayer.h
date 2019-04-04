@@ -22,6 +22,7 @@ public:
 	void setIntentColor(IntentColorCallBack callback, int mode);
 	void setAltitudeColor(IntentColorCallBack callback, int mode);
 	void setBlendColor(BlendColorCallBack callback, int modeIntent, int modeAltitude);
+	void setRGBColor();
 
 private:
 
@@ -30,6 +31,7 @@ private:
 	osg::ref_ptr<osg::Vec4Array> PointsIntentColor;
 	osg::ref_ptr<osg::Vec4Array> PointsAltitudeColor;
 	osg::ref_ptr<osg::Vec4Array> PointsBlendColor;
+	osg::ref_ptr<osg::Vec4Array> PointsRGB;
 	std::vector<double> m_intentFactors;
 	std::vector<double> m_altitudeFactors;
 	int pointNumber;

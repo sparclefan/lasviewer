@@ -97,8 +97,6 @@ MainWindow::MainWindow()
 	PointsGeode = new osg::Geode();
 	PointAttr = new osg::Point();
 
-
-	this->showMaximized();
 }
 
 MainWindow::~MainWindow()
@@ -187,6 +185,9 @@ void MainWindow::on_colorModeChanged(int id)
 				break;
 			case 3: // ·ÖÀà
 				layer->setOverallColor(classifyColor[classid].color);
+				break;
+			case 4: // RGB
+				layer->setRGBColor();
 				break;
 			default:
 				layer->setOverallColor(QColor(255, 255, 255));
