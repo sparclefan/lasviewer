@@ -1,4 +1,4 @@
-#ifndef __QT_OSG_VIEWER_H_SPARCLE_20190108
+﻿#ifndef __QT_OSG_VIEWER_H_SPARCLE_20190108
 #define __QT_OSG_VIEWER_H_SPARCLE_20190108
 	
 #include <QtCore/QTimer>

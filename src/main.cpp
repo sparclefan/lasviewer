@@ -1,4 +1,4 @@
-#include <QApplication>
+﻿#include <QApplication>
 #include <QTextCodec>
 #include "MainWindow.h"
 
@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	//qDebug()<<"Size of double: "<<sizeof(double);
 	//qDebug() << "Size of uint32_t: " << sizeof(uint32_t);
 
-	QTextCodec::setCodecForLocale(QTextCodec::codecForName("gb2312"));
+	QTextCodec::setCodecForLocale(QTextCodec::codecForName("utf-8"));
 	QApplication a(argc, argv);
 	MainWindow w;
 	w.showMaximized();

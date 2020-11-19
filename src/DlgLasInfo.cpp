@@ -1,3 +1,5 @@
+ï»¿#pragma execution_character_set("utf-8")
+
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDate>
@@ -93,12 +95,12 @@ void DlgLasInfo::on_intentRangeChanged(int minIntent, int maxIntent)
 void DlgLasInfo::on_export()
 {
 	if (m_pLasReader == NULL){
-		QMessageBox::information(this, Tr("µ¼³ölasÎÄ¼þ"), Tr("Ã»ÓÐ´ò¿ªµÄlasÎÄ¼þ"));
+		QMessageBox::information(this, Tr("å¯¼å‡ºlasæ–‡ä»¶"), Tr("æ²¡æœ‰æ‰“å¼€çš„lasæ–‡ä»¶"));
 		return;
 	}
 
-	QString filename = QFileDialog::getSaveFileName(this, Tr("µ¼³ölasÎÄ¼þ"), "",
-		Tr("lasÊý¾ÝÎÄ¼þ (*.las);;All files (*.*)"));
+	QString filename = QFileDialog::getSaveFileName(this, Tr("å¯¼å‡ºlasæ–‡ä»¶"), "",
+		Tr("lasæ•°æ®æ–‡ä»¶ (*.las);;All files (*.*)"));
 
 	if (filename.isNull()) return;
 
@@ -120,7 +122,7 @@ void DlgLasInfo::on_export()
 	if (ui->gb_colorFilter->isChecked())
 	{
 		param.bFiltColor = true;
-		param.filtColor = ui->lb_defaultColor->palette().background().color().rgb();
+		param.filtColor = ui->lb_defaultColor->palette().window().color().rgb();
 	}
 	m_pLasReader->exportLas(filename, param);
 

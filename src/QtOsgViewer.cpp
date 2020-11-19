@@ -1,4 +1,4 @@
-#include "QtOsgViewer.h"
+﻿#include "QtOsgViewer.h"
 
 bool QtOSGAdapterWidget::_ismax = false;
 
@@ -87,7 +87,7 @@ void QtOSGAdapterWidget::mouseDoubleClickEvent(QMouseEvent * event)
 	}
 	_gw->getEventQueue()->mouseDoubleButtonPress(event->x(), event->y(), button);
 
-	if (event->button() == Qt::RightButton)
+	if (event->button() == Qt::LeftButton)
 	{
 		if (_ismax)
 		{

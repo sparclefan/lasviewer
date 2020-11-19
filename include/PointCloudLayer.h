@@ -1,4 +1,4 @@
-#ifndef __PointCloudLayer_h_SPAECLE_2019_1_28
+﻿#ifndef __PointCloudLayer_h_SPAECLE_2019_1_28
 #define __PointCloudLayer_h_SPAECLE_2019_1_28
 
 #include <osg/Point>
@@ -21,6 +21,7 @@ public:
 	void setOverallColor(QColor color);
 	void setIntentColor(IntentColorCallBack callback, int mode);
 	void setAltitudeColor(IntentColorCallBack callback, int mode);
+	void setAltitudeRange(double maxAl, double minAl, IntentColorCallBack callback, int mode);
 	void setBlendColor(BlendColorCallBack callback, int modeIntent, int modeAltitude);
 	void setRGBColor();
 
@@ -40,6 +41,11 @@ private:
 	int blIntentColorMode;
 	int blAltitudeColorMode;
 	int classifier;
+
+	double maxIntent;
+	double minIntent;
+	double maxAltitude;
+	double minAltitude;
 };
 	
 #endif //__PointCloudLayer_h_SPAECLE_2019_1_28

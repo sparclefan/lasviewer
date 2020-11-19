@@ -1,16 +1,21 @@
-#include "LasReader.h"
+﻿#include "LasReader.h"
 #include <QTime>
 #include <QFileInfo>
 #include <QDebug>
+#include <QApplication>
 	
 #define reversbytes32(d)	( (((d)<<24)&0xff000000)|(((d)<<8)&0xff0000)|(((d)>>8)&0xff00)|(((d)>>24)&0xff) )
 #define reversbytes16(d) ( (((d)<<8)&0xff00)|(((d)>>8)&0xff) )
 
 using namespace AsprsLasFile;
+using namespace std;
+
+QMutex LasReader::m_mutex;
 
 LasReader::LasReader(QString &filepath)
-	: m_thinfactor(0), m_maxInten(0), m_minInten(0)
+	: m_thinfactor(0), m_maxInten(0), m_minInten(0), m_filepath(filepath)
 {
+	// moveToThread(QApplication::instance()->thread());
 	// test byte order
 	int tmp = 1;
 	uchar *pTmp = (uchar *)&tmp;
@@ -37,6 +42,9 @@ LasReader::~LasReader()
 
 	m_pFile->close();
 	delete m_pFile;
+
+	std::map<int, osg::ref_ptr<PointCloudLayer>> empty;
+	m_layers.swap(empty);
 }
 
 double LasReader::reversBytesDouble(double d)
@@ -97,6 +105,7 @@ LasHeader *LasReader::getHeader()
 
 void LasReader::run()
 {
+	QMutexLocker lock(&m_mutex);
 	QTime t;
 	t.start();
 	std::map<int, osg::ref_ptr<PointCloudLayer>>().swap(m_layers);
@@ -145,9 +154,9 @@ void LasReader::run()
 			pPoint = &tmpPoint;
 		}
 
-		double x = (m_header.m_xScaleFactor * pPoint->m_position.X + m_header.m_xOffset) - m_header.m_minX;
-		double y = (m_header.m_yScaleFactor * pPoint->m_position.Y + m_header.m_yOffset) - m_header.m_minY;
-		double z = (m_header.m_zScaleFactor * pPoint->m_position.Z + m_header.m_zOffset) - m_header.m_minZ;
+		double x = (m_header.m_xScaleFactor * pPoint->m_position.X + m_header.m_xOffset);// - m_header.m_minX;
+		double y = (m_header.m_yScaleFactor * pPoint->m_position.Y + m_header.m_yOffset); // - m_header.m_minY;
+		double z = (m_header.m_zScaleFactor * pPoint->m_position.Z + m_header.m_zOffset); // - m_header.m_minZ;
 
 		int classify = (int)pPoint->m_classification;
 		osg::ref_ptr<PointCloudLayer> pcl;
@@ -158,6 +167,11 @@ void LasReader::run()
 		else{
 			pcl = new PointCloudLayer(classify);
 			m_layers[classify] = pcl;
+
+			pcl->maxAltitude = m_header.m_maxZ;
+			pcl->minAltitude = m_header.m_minZ;
+			pcl->maxIntent = m_maxInten;
+			pcl->minIntent = m_minInten;
 		}
 
 		pcl->PointsVertices->push_back(osg::Vec3d(x, y, z));
@@ -183,7 +197,7 @@ void LasReader::run()
 		double factor = (pPoint->m_intensity - m_minInten) / (m_maxInten - m_minInten);
 		pcl->m_intentFactors.push_back(factor);
 
-		factor = z / (m_header.m_maxZ - m_header.m_minZ);
+		factor = (z - m_header.m_minZ ) / (m_header.m_maxZ - m_header.m_minZ);
 		pcl->m_altitudeFactors.push_back(factor);
 
 		pcl->pointNumber++;
@@ -196,7 +210,7 @@ void LasReader::run()
 		}
 	}
 
-	emit processFinished();
+	emit processFinished(this);
 }
 
 void LasReader::exportLas(QString fname, ExpParam expParam)

@@ -1,4 +1,4 @@
-#include "PointCloudLayer.h"
+﻿#include "PointCloudLayer.h"
 
 PointCloudLayer::PointCloudLayer(int classify)
 	:classifier(classify), pointNumber(0), intentColorMode(-1), altitudeColorMode(-1),
@@ -52,6 +52,28 @@ void PointCloudLayer::setIntentColor(IntentColorCallBack callback, int mode)
 	PointsGeometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 }
 
+void PointCloudLayer::setAltitudeRange(double maxAl, double minAl, IntentColorCallBack callback, int mode)
+{
+	maxAltitude = maxAl;
+	minAltitude = minAl;
+
+	if (!PointsGeometry.valid())
+		return;
+
+	if (!PointsAltitudeColor.valid())
+		return;
+
+	PointsAltitudeColor->clear();
+	for( osg::Vec3d vec : PointsVertices->asVector() )
+	{
+		double factor = (vec.z()-minAltitude)/(maxAltitude - minAltitude);
+		QColor rgb = callback(factor, mode);
+		PointsAltitudeColor->push_back(osg::Vec4(rgb.redF(), rgb.greenF(), rgb.blueF(), 1.0));
+	}
+
+	altitudeColorMode = mode;
+}
+
 void PointCloudLayer::setAltitudeColor(IntentColorCallBack callback, int mode)
 {
 	if (!PointsGeometry.valid())
@@ -63,11 +85,18 @@ void PointCloudLayer::setAltitudeColor(IntentColorCallBack callback, int mode)
 	if (altitudeColorMode != mode)
 	{
 		PointsAltitudeColor->clear();
-		for (double factor : m_altitudeFactors)
+		// for (double factor : m_altitudeFactors)
+		// {
+		// 	QColor rgb = callback(factor, mode);
+		// 	PointsAltitudeColor->push_back(osg::Vec4(rgb.redF(), rgb.greenF(), rgb.blueF(), 1.0));
+		// }
+		for( osg::Vec3d vec : PointsVertices->asVector() )
 		{
+			double factor = (vec.z()-minAltitude)/(maxAltitude - minAltitude);
 			QColor rgb = callback(factor, mode);
 			PointsAltitudeColor->push_back(osg::Vec4(rgb.redF(), rgb.greenF(), rgb.blueF(), 1.0));
 		}
+
 		altitudeColorMode = mode;
 	}
 
@@ -114,3 +143,4 @@ void PointCloudLayer::setRGBColor()
 	PointsGeometry->setColorArray(PointsRGB.get());
 	PointsGeometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 }
+

@@ -1,66 +1,25 @@
+ï»¿#pragma execution_character_set("utf-8")
+
 #include "MainWindow.h"
 #include "ui_mainwindow.h"
 #include <QHBoxLayout>
 #include "lasFileStruct.h"
 #include <QFileDialog>
 #include "qchartview.h"
+#include "ColorUtils.h"
 
-#define Tr(s) QString::fromLocal8Bit(s)
+#define Tr(s) QString::fromUtf8(s)
 
-typedef struct{
-	QColor color;
-	char name[32];
-} ClassifyCfg;
-
-const ClassifyCfg classifyColor[] = {
-	{ QColor(255, 100, 100), "µ¼Ïß" },
-	{ QColor(160, 160, 160), "ÏÂÃæµÄµ¼Ïß" },
-	{ QColor(239, 250, 19), "ÆäËûµ¼Ïß" },
-	{ QColor(170, 0, 127), "µØÏß" },
-	{ QColor(0, 180, 0), "µÍÖ²±»" },
-	{ QColor(0, 255, 0), "¸ßÖ²±»" },
-	{ QColor(0, 255, 0), "Ö²±»" },
-	{ QColor(139, 133, 30), "µØÃæ" },
-
-	{ QColor(128, 64, 64), "µØÃæ¹Ø¼üµã" },
-	{ QColor(0, 0, 255), "½¨ÖþÎï" },
-	{ QColor(80, 80, 255), "ÁÙÊ±½¨ÖþÎï" },
-	{ QColor(60, 60, 60), "µÀÂ·" },
-	{ QColor(170, 170, 170), "ÇÅÁº" },
-	{ QColor(100, 60, 100), "ÌúÂ·" },
-	{ QColor(255, 128, 128), "ÉÏ¿çÔ½" },
-	{ QColor(255, 128, 128), "ÏÂ¿çÔ½" },
-
-	{ QColor(234, 236, 255), "¸ËËþ" },
-	{ QColor(190, 190, 190), "³ÐÁ¦Ë÷/½Ó´¥Ïß" },
-	{ QColor(151, 219, 242), "ºÓÁ÷" },
-	{ QColor(151, 219, 242), "Í¨º½ºÓÁ÷" },
-	{ QColor(151, 219, 242), "²»Í¨º½ºÓÁ÷" },
-	{ QColor(255, 0, 0), "Î£ÏÕµã" },
-	{ QColor(255, 200, 50), "¾øÔµ×Ó" },
-	{ QColor(19, 1, 0), "ÆäËû" },
-
-	{ QColor(128, 128, 128), "ÔëÉù" },
-	{ QColor(236, 236, 236), "±äµçÕ¾" },
-	{ QColor(236, 236, 236), "Æû³µ´¬²°" },
-	{ QColor(151, 219, 242), "ºþ²´" },
-	{ QColor(255, 123, 0), "ÒýÁ÷Ïß" },
-	{ QColor(255, 0, 255), "Æ½¶ÏÃæÍ¼µØÃæÏß1" },
-	{ QColor(128, 0, 255), "Æ½¶ÏÃæÍ¼µØÃæÏß2" },
-	{ QColor(160, 160, 160), "ÎÞÀà±ð" }
-};
-
-const int classifyColorNum = sizeof(classifyColor) / sizeof(ClassifyCfg);
 
 MainWindow::MainWindow()
-	:QMainWindow(), m_workPath(""), m_thinFactor(10), m_lasReader(NULL)
+	:QMainWindow(), m_workPath(""), m_thinFactor(10)
 {
 	ui = new Ui::MainWindow();
 	ui->setupUi(this);
 
 	m_dlgLasInfo = new DlgLasInfo(this);
 
-	tabifyDockWidget(ui->dock_classify, ui->dock_options);
+	// tabifyDockWidget(ui->dock_classify, ui->dock_options);
 
 	readSetting();
 
@@ -68,8 +27,8 @@ MainWindow::MainWindow()
 	ui->horizontalLayout->addWidget(m_osgViewer);
 	ui->cb_thinning->setCurrentText("10");
 	ui->tableWidget->verticalHeader()->hide();
-	ui->tableWidget->setColumnWidth(3, 35);
-	ui->tableWidget->setColumnWidth(4, 35);
+	ui->tableWidget->setColumnWidth(0, 35);
+	ui->tableWidget->setColumnWidth(1, 35);
 	ui->cb_thinning->setCurrentText(QString("%1").arg(m_thinFactor));
 	m_progress = new QProgressBar(this);
 	m_progress->setFormat("%p%");
@@ -77,7 +36,9 @@ MainWindow::MainWindow()
 	m_progress->setMaximum(100);
 	ui->statusbar->addPermanentWidget(m_progress);
 
-	ui->menu_2->addAction(ui->dock_classify->toggleViewAction());
+	ui->lw_fileList->setContextMenuPolicy (Qt::CustomContextMenu);
+
+	// ui->menu_2->addAction(ui->dock_classify->toggleViewAction());
 	ui->menu_2->addAction(ui->dock_options->toggleViewAction());
 
 	drawColorPalette(ui->lb_intentColor, 0);
@@ -94,17 +55,26 @@ MainWindow::MainWindow()
 	connect(m_dlgLasInfo, SIGNAL(hideDlg()), this, SLOT(on_dlgLasInfoHide()));
 	connect(this, SIGNAL(intentRangeChanged(int, int)), m_dlgLasInfo, SLOT(on_intentRangeChanged(int, int)));
 
-	PointsGeode = new osg::Geode();
+	connect(ui->lw_fileList,SIGNAL(customContextMenuRequested(QPoint)),this,SLOT(filelist_showmenu(QPoint)));
+
 	PointAttr = new osg::Point();
 
+	root = new osg::Group;
+	set = new osg::StateSet();
+	int pointSize = 1; //ui->cb_pointSize->currentText().toInt();
+	PointAttr->setSize(pointSize);
+	/// Disable depth test to avoid sort problems and Lighting
+	set->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
+	set->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+	set->setAttribute(PointAttr.get());
+
+	m_osgViewer->setSceneData(root);
 }
 
 MainWindow::~MainWindow()
 {
 	writeSetting();
 
-	if (m_lasReader != NULL)
-		delete m_lasReader;
 }
 
 void MainWindow::readSetting()
@@ -140,18 +110,12 @@ void MainWindow::drawColorPalette(QLabel *pal, int mode)
 	float r, g, b;
 	for (int i = 0; i < size.width(); i++)
 	{
-		float H = caculateColorH((float)i / size.width(), mode);
-		HSL2RGB(H, L, S, r, g, b);
+		float H = ColorUtils::caculateColorH((float)i / size.width(), mode);
+		ColorUtils::HSL2RGB(H, L, S, r, g, b);
 		painter.setPen(QColor(r*255.0, g*255.0, b*255.0));
 		painter.drawLine(i, 0, i, size.height());
 	}
 	pal->setPixmap(image);
-}
-
-void MainWindow::clearPointsData()
-{
-	PointsGeode = new osg::Geode();
-	ui->tableWidget->clearContents();
 }
 
 void MainWindow::on_dlgLasInfoHide()
@@ -166,34 +130,42 @@ void MainWindow::on_actionLasInfo_triggered()
 
 void MainWindow::on_colorModeChanged(int id)
 {
-	for (auto it : m_layers)
-	{
-		osg::ref_ptr<PointCloudLayer> layer = it.second;
-		int classify = it.first;
-		int classid = classify > 31 ? 31 : classify;
-		switch (id)
+	for(auto it: m_lasReaders){
+		LasReader *reader = it.second;
+		std::map<int, osg::ref_ptr<PointCloudLayer>> layers = reader->readPointsLayers();
+
+		for (auto itl : layers)
 		{
-			case 0: // Ç¿¶È
-				layer->setIntentColor((IntentColorCallBack)(&MainWindow::getIntentColor), ui->cb_IndentColorSet->currentIndex());
-				break;
-			case 1: // ¸ß³Ì
-				layer->setAltitudeColor((IntentColorCallBack)(&MainWindow::getIntentColor), ui->cb_AltitudeColorSet->currentIndex());
-				break;
-			case 2: // ¸ß³Ì+Ç¿¶È
-				layer->setBlendColor((BlendColorCallBack)(&MainWindow::getBlendColor),
-					ui->cb_IndentColorSet->currentIndex(), ui->cb_AltitudeColorSet->currentIndex());
-				break;
-			case 3: // ·ÖÀà
-				layer->setOverallColor(classifyColor[classid].color);
-				break;
-			case 4: // RGB
-				layer->setRGBColor();
-				break;
-			default:
-				layer->setOverallColor(QColor(255, 255, 255));
-				break;
-			}
+			osg::ref_ptr<PointCloudLayer> layer = itl.second;
+			int classify = itl.first;
+			int classid = classify > 31 ? 31 : classify;
+			switch (id)
+			{
+				case 0: // å¼ºåº¦
+					layer->setIntentColor((IntentColorCallBack)(&ColorUtils::getIntentColor), ui->cb_IndentColorSet->currentIndex());
+					break;
+				case 1: // é«˜ç¨‹
+					layer->setAltitudeColor((IntentColorCallBack)(&ColorUtils::getIntentColor), ui->cb_AltitudeColorSet->currentIndex());
+					break;
+				case 2: // é«˜ç¨‹+å¼ºåº¦
+					layer->setBlendColor((BlendColorCallBack)(&ColorUtils::getBlendColor),
+						ui->cb_IndentColorSet->currentIndex(), ui->cb_AltitudeColorSet->currentIndex());
+					break;
+				case 3: // åˆ†ç±»
+					layer->setOverallColor(classifyColor[classid].color);
+					break;
+				case 4: // RGB
+					layer->setRGBColor();
+					break;
+				default:
+					layer->setOverallColor(QColor(255, 255, 255));
+					break;
+				}
+		}		
+
 	}
+
+
 	if (m_osgViewer)
 		m_osgViewer->requestRedraw();
 }
@@ -220,23 +192,27 @@ void MainWindow::on_altitudeRangeChanged(int minAlt, int maxAlt)
 {
 	ui->lb_minAltitude->setText(QString("%1").arg(minAlt));
 	ui->lb_maxAltitude->setText(QString("%1").arg(maxAlt));
+
+	for(auto it: m_lasReaders){
+		LasReader *reader = it.second;
+		std::map<int, osg::ref_ptr<PointCloudLayer>> layers = reader->readPointsLayers();
+
+		for (auto itl : layers)
+		{
+			osg::ref_ptr<PointCloudLayer> layer = itl.second;
+			layer->setAltitudeRange(maxAlt, minAlt, (IntentColorCallBack)(&ColorUtils::getIntentColor), ui->cb_AltitudeColorSet->currentIndex());
+		}
+	}
 }
 
 void MainWindow::on_tableCellChanged(int row, int coloumn)
 {
-	if( row<0 || (coloumn != 4)) 
+	if( row<0 || (coloumn != 0)) 
 		return;
 
-	int classify = ui->tableWidget->item(row, 0)->text().toInt();
-	osg::ref_ptr<PointCloudLayer> layer = m_layers[classify];
-
-	if (ui->tableWidget->item(row, coloumn)->checkState() == Qt::Checked)
-	{
-		PointsGeode->addDrawable(layer->getGeometry());
-	}
-	else{
-		PointsGeode->removeDrawable(layer->getGeometry());
-	}
+	int classify = ui->tableWidget->item(row, 3)->text().toInt();
+	osg::ref_ptr<ClassifyLayers> layer = m_classifyLayers[classify];
+	layer->showLayers( (ui->tableWidget->item(row, coloumn)->checkState() == Qt::Checked) );
 
 	if (m_osgViewer)
 		m_osgViewer->requestRedraw();
@@ -255,202 +231,240 @@ void MainWindow::onProgress(int percent)
 	m_progress->setValue(percent);
 }
 
-void MainWindow::loadLasPoints()
-{
-	if (m_lasReader == NULL)
-		return;
-
-	if (m_lasReader->getThinFactor() == m_thinFactor)
-	{
-		onReadFinished();
-		return;
-	}
-
-	ui->statusbar->showMessage(Tr("¶ÁÈ¡lasÎÄ¼þ..."));
-	m_progress->setValue(0);
-
-	connect(m_lasReader, SIGNAL(progress(int)), this, SLOT(onProgress(int)));
-	connect(m_lasReader, SIGNAL(processFinished()), this, SLOT(onReadFinished()));
-
-	m_lasReader->setThinFactor(m_thinFactor);
-	m_lasReader->start();
-}
-
-void MainWindow::onReadFinished()
-{
-	ui->statusbar->showMessage("Ready");
-	m_progress->setValue(100);
-
-	clearPointsData();
-	m_layers = m_lasReader->readPointsLayers();
-
-	int row = 0;
-	for (auto it : m_layers)
-	{
-		osg::ref_ptr<PointCloudLayer> layer = it.second;
-		layer->getGeometry();
-
-		ui->tableWidget->setRowCount(row + 1);
-		int classify = it.first;
-		QTableWidgetItem *item = new QTableWidgetItem(QString("%1").arg(classify));
-		ui->tableWidget->setItem(row, 0, item);
-
-		if (classify < 32)
-			item = new QTableWidgetItem(Tr(classifyColor[classify].name));
-		else
-			item = new QTableWidgetItem(Tr("Î´¶¨ÒåÀà±ð"));
-		ui->tableWidget->setItem(row, 1, item);
-
-		item = new QTableWidgetItem(QString("%1").arg(layer->getPointNumber()));
-		ui->tableWidget->setItem(row, 2, item);
-
-		int id = classify>31 ? 31 : classify;
-		item = new QTableWidgetItem();
-		item->setBackground(classifyColor[id].color);
-		ui->tableWidget->setItem(row, 3, item);
-
-		item = new QTableWidgetItem();
-		item->setCheckState(Qt::Checked);
-		ui->tableWidget->setItem(row, 4, item);
-
-		row++;
-
-	}
-
-	osg::ref_ptr<osg::Group> root = new osg::Group;
-	osg::ref_ptr<osg::StateSet> set = new osg::StateSet();
-	int pointSize = ui->cb_pointSize->currentText().toInt();
-	PointAttr->setSize(pointSize);
-	/// Disable depth test to avoid sort problems and Lighting
-	set->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
-	set->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-	set->setAttribute(PointAttr.get());
-	PointsGeode->setStateSet(set.get());
-
-	root->addChild(PointsGeode.get());
-
-	m_osgViewer->setSceneData(root.get());
-
-	on_colorModeChanged(ui->cb_colorMode->currentIndex());
-
-	emit intentRangeChanged(m_lasReader->getMinIntent(), m_lasReader->getMaxIntent());
-}
-
 void MainWindow::on_thinFactorChanged(int id)
 {
 	m_thinFactor = ui->cb_thinning->currentText().toInt();
-	loadLasPoints();
+	
+	for( auto it : m_fileGroups )
+	{
+		osg::ref_ptr<osg::Group> group = it.second;
+		root->removeChild(group);
+	}
+	std::map<QString, osg::ref_ptr<osg::Switch>> empty;
+	m_fileGroups.swap(empty);
+	ui->lw_fileList->clear();
+
+	for( auto it : m_lasReaders )
+	{
+		LasReader *reader = it.second;
+		reader->setThinFactor(m_thinFactor);
+
+		reader->start();
+	}
 }
 
 void MainWindow::on_actionOpen_triggered()
 {
-	QString filename = QFileDialog::getOpenFileName(this, Tr("´ò¿ª¼¤¹âÊý¾ÝÎÄ¼þ"), m_workPath,
-		Tr("lasÊý¾ÝÎÄ¼þ (*.las);;All files (*.*)"));
+	QStringList filelist = QFileDialog::getOpenFileNames(this, Tr("æ‰“å¼€ç‚¹äº‘æ•°æ®æ–‡ä»¶"), m_workPath,
+		Tr("lasæ•°æ®æ–‡ä»¶ (*.las);;All files (*.*)"));
 
-	if (filename.isNull()) return;
+	if( filelist.isEmpty() ) return;
 
-	this->setWindowTitle(Tr("lasÎÄ¼þ²é¿´Æ÷ --")+filename);
+	for(int i=0; i<filelist.size(); i++)
+	{
+		QString filename = filelist.at(i);
+		QFileInfo finfo(filename);
+		m_workPath = finfo.canonicalPath();
+
+		if( m_fileGroups.find(filename) != m_fileGroups.end() )
+		{
+			continue;
+		}
+
+		LasReader *reader = new LasReader(filename);
+		reader->setThinFactor(m_thinFactor);
+
+		connect(reader, SIGNAL(progress(int)), this, SLOT(onProgress(int)));
+		connect(reader, SIGNAL(processFinished(LasReader *)), this, SLOT(onReadFinished(LasReader *)));
+
+		m_lasReaders[filename] = reader;
+
+		reader->start();
+	}
+
+}
+
+void MainWindow::onReadFinished(LasReader *reader)
+{
+	ui->statusbar->showMessage("Ready");
+	m_progress->setValue(100);
+
+	QString filename = reader->filePath();
+	osg::ref_ptr<Switch> filegroup = new osg::Switch();
+	osg::ref_ptr<Group> group = new osg::Group();
+	filegroup->addChild(group);
+	root->addChild(filegroup);
 
 	QFileInfo finfo(filename);
-	m_workPath = finfo.canonicalPath();
+	QListWidgetItem *item = new QListWidgetItem(finfo.baseName());
+	item->setToolTip(filename);
+	ui->lw_fileList->addItem(item);
 
-	if (m_lasReader != NULL)
-		delete m_lasReader;
+	std::map<int, osg::ref_ptr<PointCloudLayer>> layers = reader->readPointsLayers();
 
-	m_lasReader = new LasReader(filename);
-	AsprsLasFile::LasHeader *pHeader = m_lasReader->getHeader();
-	emit altitudeRangeChanged(pHeader->m_minZ, pHeader->m_maxZ);
-
-	m_dlgLasInfo->setLasReader(m_lasReader);
-
-	loadLasPoints();
-
-}
-
-QColor MainWindow::getIntentColor(double factor, int mode)
-{
-	float H = caculateColorH(factor, mode); //1.0 / 3 + (factor)*2.0 / 3; //(2.0 / 3)*(1.0-factor);
-	float L = 1.0;
-	float S = 0.5;
-	float r, g, b;
-	HSL2RGB(H, L, S, r, g, b);
-	return QColor((int)(r*255),(int)(g*255),(int)(b*255));
-}
-
-QColor MainWindow::getBlendColor(double f1, double f2, int mode1, int mode2)
-{
-	float H1 = caculateColorH(f1, mode1); 
-	float H2 = caculateColorH(f2, mode2);
-	float L = 1.0;
-	float S = 0.5;
-	float r1, g1, b1, r2, g2, b2;
-	HSL2RGB(H1, L, S, r1, g1, b1);
-	HSL2RGB(H2, L, S, r2, g2, b2);
-	float r = crCalculateBlend(r1, r2);
-	float g = crCalculateBlend(g2, g2);
-	float b = crCalculateBlend(b1, b2);
-	return QColor((int)(r * 255), (int)(g * 255), (int)(b * 255));
-}
-
-float MainWindow::caculateColorH(float factor, int mode)
-{
-	switch (mode){
-	case 0:
-		return ((1.0 - factor)*2.0 / 3) - (1.0 / 3);    // ÂÌ-ºì-À¶
-	case 1:
-		return (2.0 / 3)*(1.0 - factor);   // À¶-ÂÌ-ºì
-	case 2:
-		return (1.0 / 3 + (factor)*2.0 / 3);  // ÂÌ-À¶-ºì
-	case 3:
-		return 1.0/3 + factor/3;  // ÂÌ-À¶
-	case 4:
-		return 1.0 / 3 - factor / 3;  // ÂÌ-ºì
-	default:
-		return ((1.0 - factor)*2.0 / 3) - (1.0 / 3);    // ÂÌ-ºì-À¶
-	}
-}
-
-float MainWindow::Hue_2_RGB(float v1, float v2, float vH)             //Function Hue_2_RGB
-{
-	if (vH < 0) vH += 1;
-	if (vH > 1) vH -= 1;
-	if ((6 * vH) < 1)
-		return (v1 + (v2 - v1) * 6 * vH);
-	if ((2 * vH) < 1)
-		return (v2);
-
-	if ((3 * vH) < 2)
-		return (v1 + (v2 - v1) * ((2.0 / 3) - vH) * 6);
-
-	return (v1);
-}
-
-void MainWindow::HSL2RGB(float H, float S, float L, float &R, float &G, float &B)
-{
-	if (S == 0)                       //HSL from 0 to 1
+	int row;
+	for (auto it : layers)
 	{
-		R = L;                      //RGB results from 0 to 1
-		G = L;
-		B = L;
-	}
-	else
-	{
-		float var_2;
-		if (L < 0.5)
-			var_2 = L * (1 + S);
-		else
-			var_2 = (L + S) - (S * L);
+		osg::ref_ptr<PointCloudLayer> layer = it.second;
+		
+		osg::ref_ptr<Switch> layerswitch = new osg::Switch();
+		group->addChild(layerswitch);
 
-		float var_1 = 2 * L - var_2;
+		osg::ref_ptr<osg::Geode> pointsGeode = new osg::Geode();
+		pointsGeode->setStateSet(set.get());
+		layerswitch->addChild(pointsGeode.get());
+		pointsGeode->addDrawable(layer->getGeometry());
 
-		R = Hue_2_RGB(var_1, var_2, H + (1.0 / 3));
-		G = Hue_2_RGB(var_1, var_2, H);
-		B = Hue_2_RGB(var_1, var_2, H - (1.0 / 3));
+		int classify = it.first;
+		osg::ref_ptr<ClassifyLayers> classifyLayer;
+		if( m_classifyLayers.find(classify) != m_classifyLayers.end()){
+			classifyLayer = m_classifyLayers[classify];
+			QList<QTableWidgetItem *> list = ui->tableWidget->findItems(QString("%1").arg(classify), Qt::MatchExactly);
+			row = ui->tableWidget->row(list[0]);
+		}else{
+			classifyLayer = new ClassifyLayers(classify);
+			m_classifyLayers[classify] = classifyLayer;
+
+			row = ui->tableWidget->rowCount();
+			ui->tableWidget->setRowCount(row + 1);
+
+			int id = classify>31 ? 31 : classify;
+			QTableWidgetItem *item = new QTableWidgetItem();
+			item->setBackground(classifyColor[id].color);
+			ui->tableWidget->setItem(row, 1, item);
+
+			if (classify < 32)
+				item = new QTableWidgetItem(Tr(classifyColor[classify].name));
+			else
+				item = new QTableWidgetItem(Tr("æœªå®šä¹‰ç±»åˆ«"));
+			ui->tableWidget->setItem(row, 2, item);
+
+			item = new QTableWidgetItem(QString("%1").arg(classify));
+			ui->tableWidget->setItem(row, 3, item);
+
+			item = new QTableWidgetItem();
+			item->setCheckState(Qt::Checked);
+			ui->tableWidget->setItem(row, 0, item);
+		}
+		classifyLayer->addLayer(filename, layerswitch);
+
+		// item = new QTableWidgetItem(QString("%1").arg(layer->getPointNumber()));
+		// ui->tableWidget->setItem(row, 2, item);
 	}
+
+	AsprsLasFile::LasHeader *header = reader->getHeader();
+
+	if( m_fileGroups.empty()){
+		m_osgViewer->getCameraManipulator()->home(0.0);	
+		emit altitudeRangeChanged(header->m_minZ, header->m_maxZ);
+	}else{
+		double minZ = ui->lb_minAltitude->text().toDouble();
+		double maxZ = ui->lb_maxAltitude->text().toDouble();
+
+		if( header->m_minZ < minZ || header->m_maxZ > maxZ )
+		{
+			if( header->m_minZ < minZ )
+				minZ = header->m_minZ;
+			if( header->m_maxZ > maxZ )
+				maxZ = header->m_maxZ;
+			emit altitudeRangeChanged(minZ, maxZ);
+		}else{
+			for (auto itl : layers)
+			{
+				osg::ref_ptr<PointCloudLayer> layer = itl.second;
+				layer->setAltitudeRange(maxZ, minZ, (IntentColorCallBack)(&ColorUtils::getIntentColor), ui->cb_AltitudeColorSet->currentIndex());
+			}			
+		}
+	}
+
+	m_fileGroups[filename] = filegroup;
+
+
+	on_colorModeChanged(ui->cb_colorMode->currentIndex());
+
+	emit intentRangeChanged(reader->getMinIntent(), reader->getMaxIntent());
 }
 
-float MainWindow::crCalculateBlend( float c1, float c2)
+void MainWindow::filelist_showmenu(QPoint pt)
 {
-	//(c1 * a1 * (1.0 - a2) + c2 ) / (a1 + a2 - a1 * a2);
-	return (c1*0.7 + c2*0.3);
+	QListWidgetItem *item = ui->lw_fileList->itemAt(pt); 
+	if( item== NULL ) return;
+
+	ActionMapper *actionMapper = new ActionMapper(item);
+
+	QMenu *menu = new QMenu(ui->tableWidget); 
+	QAction *action0 = new QAction("ç»Ÿè®¡ä¿¡æ¯",ui->lw_fileList); 
+	QAction *action1 = new QAction("æ˜¾ç¤º",ui->lw_fileList); 
+	QAction *action2 = new QAction("å…³é—­",ui->lw_fileList); 
+
+	QString filename = item->toolTip();
+	osg::ref_ptr<osg::Switch> group = m_fileGroups[filename];
+	action1->setCheckable(TRUE);
+	action1->setChecked(group->getValue(0));
+
+	connect (action0,SIGNAL(triggered()),actionMapper,SLOT(statisticFile())); 
+	connect (action1,SIGNAL(toggled(bool)),actionMapper,SLOT(showFile(bool))); 
+	connect (action2,SIGNAL(triggered()),actionMapper,SLOT(closeFile())); 
+
+	connect(actionMapper, SIGNAL(sigStatisticFile(QListWidgetItem *)), this, SLOT(statisticFile(QListWidgetItem *)));
+	connect(actionMapper, SIGNAL(sigShowFile(QListWidgetItem *, bool)), this, SLOT(showFile(QListWidgetItem *, bool)));
+	connect(actionMapper, SIGNAL(sigCloseFile(QListWidgetItem *)), this, SLOT(closeFile(QListWidgetItem *)));
+
+	menu->addAction(action0); 
+	menu->addAction(action1); 
+	menu->addAction(action2); 
+	menu->move (cursor ().pos ()); 
+	menu->show (); 
+
+}
+
+void MainWindow::showFile(QListWidgetItem *item, bool bShow)
+{
+	QString filename = item->toolTip();
+	osg::ref_ptr<osg::Switch> group = m_fileGroups[filename];
+
+	group->setValue(0, bShow);
+}
+
+void MainWindow::closeFile(QListWidgetItem *item)
+{
+	QString filename = item->toolTip();
+	osg::ref_ptr<osg::Switch> group = m_fileGroups[filename];
+	root->removeChild(group);
+	m_fileGroups.erase(filename);
+
+	LasReader *reader = m_lasReaders[filename];
+	delete reader;
+	m_lasReaders.erase(filename);
+
+	for( auto it : m_classifyLayers)
+	{
+		osg::ref_ptr<ClassifyLayers> layer = it.second;
+		if( layer->removeLayer(filename)){
+
+			int classify = layer->classify();
+			QList<QTableWidgetItem *> list = ui->tableWidget->findItems(QString("%1").arg(classify), Qt::MatchExactly);
+			int row = ui->tableWidget->row(list[0]);
+			ui->tableWidget->removeRow(row);
+
+			m_classifyLayers.erase(classify);
+
+		}
+	}
+
+	ui->lw_fileList->takeItem(ui->lw_fileList->row(item));
+
+	m_osgViewer->requestRedraw();
+
+}
+
+void MainWindow::statisticFile(QListWidgetItem *item)
+{
+	QString filename = item->toolTip();
+	LasReader *reader = m_lasReaders[filename];
+
+	m_dlgLasInfo->setLasReader(reader);
+	m_dlgLasInfo->setWindowTitle("Lasæ–‡ä»¶ä¿¡æ¯ -"+item->text());
+	m_dlgLasInfo->setVisible(TRUE);
+	ui->actionLasInfo->setChecked(true);
 }

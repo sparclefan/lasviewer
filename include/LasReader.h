@@ -1,4 +1,4 @@
-#ifndef __LasReader_H_SPARCLE_2019_01_23
+﻿#ifndef __LasReader_H_SPARCLE_2019_01_23
 #define __LasReader_H_SPARCLE_2019_01_23
 	
 #include <QString>
@@ -7,6 +7,7 @@
 #include <QPointF>
 #include <QRgb>
 #include <QLineSeries>
+#include <QMutex>
 #include "lasFileStruct.h"
 #include "PointCloudLayer.h"
 
@@ -41,14 +42,15 @@ public:
 
 	void statistic();
 	void statisticImpl();
-	QPointF *getIntentStatisticData(){ return m_InstentStatistic; }
-	QPointF *getAltitudeStatisticData() { return m_AltitudeStatistic; }
+	QPointF *getIntentStatisticData(){ return m_InstentStatistic; };
+	QPointF *getAltitudeStatisticData() { return m_AltitudeStatistic; };
+	QString filePath() { return m_filepath;};
+
 	//QLineSeries *getIntentCurve();
 	//QLineSeries *getAltitudeCurve();
-
 signals:
-	void progress(int percent);
-	void processFinished();
+	void progress(int);
+	void processFinished(LasReader *);
 	void statisticFinished();
 
 protected:
@@ -57,6 +59,8 @@ protected:
 private:
 	QFile *m_pFile;
 	uchar *m_pMap;
+	QString m_filepath;
+	static QMutex m_mutex;
 
 	bool m_bigEndian;
 	int m_thinfactor;
@@ -75,5 +79,10 @@ private:
 
 };
 
+// class LasReaderPool : public QThreadPool
+// {
+
+
+// };
 	
 #endif //__LasReader_H_SPARCLE_2019_01_23

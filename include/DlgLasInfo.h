@@ -1,4 +1,4 @@
-#ifndef __DlgLasInfo_h_SPARCLE_2019_02_18
+﻿#ifndef __DlgLasInfo_h_SPARCLE_2019_02_18
 #define __DlgLasInfo_h_SPARCLE_2019_02_18
 
 #include <QDialog>

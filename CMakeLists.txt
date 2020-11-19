@@ -1,23 +1,33 @@
-# CMake ◊ÓµÕ∞Ê±æ∫≈“™«Û
+Ôªø# CMake ÊúÄ‰ΩéÁâàÊú¨Âè∑Ë¶ÅÊ±Ç
 cmake_minimum_required (VERSION 3.2)
-# œÓƒø–≈œ¢
+# È°πÁõÆ‰ø°ÊÅØ
 project (lasviewer)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
 #--------- QT ----------------
+set(CMAKE_PREFIX_PATH $ENV{QTDIR})
 find_package(Qt5 REQUIRED Core Gui Widgets OpenGL Charts)
 
 #SET(QT_USE_QTOPENGL TRUE)
 link_libraries(Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL Qt5::Charts)
 
-# WinMain»Îø⁄, ≤ª–Ë“™console 
+# WinMainÂÖ•Âè£, ‰∏çÈúÄË¶Åconsole 
 SET(QT_USE_QTMAIN TRUE) 
 #----------- QT end  --------------------
 
 #-------- OSG ----------------
+set(CMAKE_PREFIX_PATH $ENV{OSG_DIR})
 find_package(OpenSceneGraph 3.0.0 REQUIRED 
 	osgDB osgGA osgUtil osgText osgViewer)
 include_directories(${OSG_INCLUDE_DIR})
 link_libraries(${OPENSCENEGRAPH_LIBRARIES})
+
+message(STATUS "OPENSCENEGRAPH_LIBRARIES: ${OPENSCENEGRAPH_LIBRARIES}")
+
 #--------  OSG end ---------------
 
 file(GLOB Sources src/*.cpp)
@@ -32,6 +42,10 @@ source_group("Header Files" FILES ${Headers})
 source_group("Generator Files" FILES ${UISrcs} ${MocSrcs}) 
 
 #SET(GUI_TYPE $<$<CONFIG:Release>:WIN32> $<$<CONFIG:Debug>:>)
-SET(GUI_TYPE WIN32)
+IF (CMAKE_BUILD_TYPE MATCHES "Debug")
+	SET(GUI_TYPE)
+ELSE()
+	SET(GUI_TYPE WIN32)
+ENDIF()
 
 add_executable(${PROJECT_NAME} ${GUI_TYPE} ${Headers} ${Sources} ${UISrcs} ${MocSrcs})

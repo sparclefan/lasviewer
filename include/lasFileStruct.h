@@ -1,4 +1,4 @@
-/**
+ï»¿/**
 	las file format
 	asprs(American Society for Photogrammetry & Remote Sensing) las specification v1.4 R13 - 15 July 2013
 **/
@@ -21,22 +21,22 @@ namespace AsprsLasFile {
 		uint16_t m_projectId3;
 		unsigned char m_projectId4[8];
 
-		unsigned char m_versionMajor;									//´ó°æ±¾ºÅ		
-		unsigned char m_versionMinor;									//Ğ¡°æ±¾ºÅ		
+		unsigned char m_versionMajor;									//å¤§ç‰ˆæœ¬å·		
+		unsigned char m_versionMinor;									//å°ç‰ˆæœ¬å·		
 
-		char m_systemId[32];											//ÏµÍ³ºÅ		
-		char m_softwareId[32];											//Èí¼şºÅ		
-		uint16_t m_createDOY;										//´´½¨ÈÕ		
-		uint16_t m_createYear;									//´´½¨Äê	
-		uint16_t m_headerSize;									//ÎÄ¼şÍ·´óĞ¡	
-		uint32_t m_dataOffset;										//Êı¾İÎ»ÖÃ
-		uint32_t m_recordsCount;									//±ä³¤ÇøÓòVariableRecordÊıÁ¿
+		char m_systemId[32];											//ç³»ç»Ÿå·		
+		char m_softwareId[32];											//è½¯ä»¶å·		
+		uint16_t m_createDOY;										//åˆ›å»ºæ—¥		
+		uint16_t m_createYear;									//åˆ›å»ºå¹´	
+		uint16_t m_headerSize;									//æ–‡ä»¶å¤´å¤§å°	
+		uint32_t m_dataOffset;										//æ•°æ®ä½ç½®
+		uint32_t m_recordsCount;									//å˜é•¿åŒºåŸŸVariableRecordæ•°é‡
 
-		unsigned char m_pointDataFormatId;								//µãÔÆÊı¾İ¸ñÊ½ID Point Data Format ID
+		unsigned char m_pointDataFormatId;								//ç‚¹äº‘æ•°æ®æ ¼å¼ID Point Data Format ID
 		unsigned short m_pointDataRecordLength;							//Point Data Record Length
 
-		uint32_t m_pointRecordsCount;								//µãµÄÊıÁ¿	
-		uint32_t m_lasHeaderNumOfReturns[5];						//»Ø²¨´ÎÊı
+		uint32_t m_pointRecordsCount;								//ç‚¹çš„æ•°é‡	
+		uint32_t m_lasHeaderNumOfReturns[5];						//å›æ³¢æ¬¡æ•°
 		
 		double m_xScaleFactor;
 		double m_yScaleFactor;
