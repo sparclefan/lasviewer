@@ -55,7 +55,6 @@ public slots:
 	void on_AltitudeColorSetChanged(int id);
 	void on_pointSizeChanged(int id);
 	void on_tableCellChanged(int row, int coloumn);
-	// void on_thinFactorChanged(int id);
 
 	void onProgress(int percent);
 	void onReadFinished(int minIntent, int maxIntent, double minAltitude, double maxAltitude);
@@ -77,7 +76,6 @@ private:
 	DlgLasInfo *m_dlgLasInfo;
 
 	std::map<QString, osg::ref_ptr<osg::Switch>> m_fileGroups;
-	// std::map<QString, osg::ref_ptr<LasReader>> m_lasReaders;
 	std::map<QString, LasReader *> m_lasReaders;
 	std::map<int, osg::ref_ptr<ClassifyLayers>> m_classifyLayers;
 
@@ -95,7 +93,6 @@ private:
 
 	void drawColorPalette(QLabel *pal, int mode);
 
-	int m_thinFactor;
 	bool m_bInitView;
 
 	QString m_workPath;

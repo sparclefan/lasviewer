@@ -1,4 +1,6 @@
-﻿#include "LasReader.h"
+﻿#pragma execution_character_set("utf-8")
+
+#include "LasReader.h"
 #include <QElapsedTimer>
 #include <QFileInfo>
 #include <QDebug>
@@ -130,7 +132,7 @@ LasHeader *LasReader::getHeader()
 
 void LasReader::run()
 {
-	QMutexLocker lock(&m_mutex);
+	// QMutexLocker lock(&m_mutex);
 	QElapsedTimer t;
 	t.start();
 	std::map<int, osg::ref_ptr<LodGroup>>().swap(m_lodLayers);
@@ -160,133 +162,14 @@ void LasReader::run()
 
 	readPointsData(optLevel);
 
-	// readPointsData(0);
-
-	// for (int level = optLevel; level < MAX_FACTOR_LEVEL; level++)
-	// // for (int level = optLevel; level < 5; level++)
-	// {
-	// 	readPointsData(level);
-	// }
-
-	// emit processFinished(m_minInten, m_maxInten, m_minAltitude, m_maxAltitude);
-
 	if( (optLevel+1) < MAX_FACTOR_LEVEL)
 	{
 		readLodThread *t = new readLodThread(this, optLevel+1);
 		QThreadPool::globalInstance()->start(t);
 		// readPointsData(optLevel + 1);
 	}
-
 	//emit processFinished(this);
 }
-
-/*
-void LasReader::run()
-{
-	QMutexLocker lock(&m_mutex);
-	QElapsedTimer t;
-	t.start();
-	std::map<int, osg::ref_ptr<PointCloudLayer>>().swap(m_layers);
-
-	uchar *pPoints = (((uchar *)m_pHeader) + m_header.m_dataOffset);
-	PointFormat0 *pPoint = (PointFormat0 *)pPoints;
-
-	unsigned short int intensity = pPoint->m_intensity;
-	if (m_bigEndian){
-		intensity = reversbytes16(intensity);
-	}
-
-	m_maxInten = intensity;
-	m_minInten = intensity;
-
-	size_t offset = 0;
-	size_t ptsize = m_header.m_pointDataRecordLength;
-
-	if( !adjCoord.bInit){
-		adjCoord.adjX = m_header.m_minX;
-		adjCoord.adjY = m_header.m_minY;
-		adjCoord.adjZ = m_header.m_minZ;
-		adjCoord.bInit = true;
-	}
-
-	//qDebug("Time elapsed: %d ms", t.elapsed());
-
-	offset = 0;
-	int percent = 0;
-	PointFormat0 tmpPoint;
-	for (unsigned long i = 0; i < m_header.m_pointRecordsCount; i += m_thinfactor, offset += (ptsize * m_thinfactor))
-	{
-		pPoint = (PointFormat0 *)(pPoints + offset);
-		if(m_bigEndian)
-		{
-			memcpy(&tmpPoint, pPoint, sizeof tmpPoint);
-			tmpPoint.m_position.X = reversbytes32(tmpPoint.m_position.X);
-			tmpPoint.m_position.Y = reversbytes32(tmpPoint.m_position.Y);
-			tmpPoint.m_position.Z = reversbytes32(tmpPoint.m_position.Z);
-			pPoint = &tmpPoint;
-		}
-
-		double x = (m_header.m_xScaleFactor * pPoint->m_position.X + m_header.m_xOffset) - adjCoord.adjX;
-		double y = (m_header.m_yScaleFactor * pPoint->m_position.Y + m_header.m_yOffset) - adjCoord.adjY;
-		double z = (m_header.m_zScaleFactor * pPoint->m_position.Z + m_header.m_zOffset) - adjCoord.adjZ;
-
-		int classify = (int)pPoint->m_classification;
-		osg::ref_ptr<PointCloudLayer> pcl;
-		if (m_layers.find(classify) != m_layers.end())
-		{
-			pcl = m_layers[classify];
-		}
-		else{
-			pcl = new PointCloudLayer(classify);
-			m_layers[classify] = pcl;
-
-			pcl->maxAltitude = m_header.m_maxZ;
-			pcl->minAltitude = m_header.m_minZ;
-		}
-
-		pcl->PointsVertices->push_back(osg::Vec3d(x, y, z));
-
-		if (m_header.m_pointDataFormatId == 3)
-		{
-			if (!pcl->PointsRGB.valid())
-			{
-				pcl->PointsRGB = new osg::Vec4Array;
-			}
-			PointFormat3 *ptFormat3 = (PointFormat3 *)pPoint;
-			
-			QColor rgb;
-			if (m_bigEndian){
-				rgb = QColor(reversbytes16(ptFormat3->m_rgb.red), reversbytes16(ptFormat3->m_rgb.green), reversbytes16(ptFormat3->m_rgb.blue));
-			}
-			else{
-				rgb = QColor(ptFormat3->m_rgb.red, ptFormat3->m_rgb.green, ptFormat3->m_rgb.blue);
-			}
-			pcl->PointsRGB->push_back(osg::Vec4(rgb.redF(), rgb.greenF(), rgb.blueF(), 1.0));
-		}
-
-		int intent = pPoint->m_intensity;
-		if( intent < pcl->minIntent ){
-			pcl->minIntent = intent;
-		}
-		if( intent > pcl->maxIntent){
-			pcl->maxIntent = intent;
-		}
-		pcl->m_intents.push_back(intent);
-
-		pcl->pointNumber++;
-
-		int newpercent = i * 100 / m_pHeader->m_pointRecordsCount;
-		if (newpercent > percent){
-			percent = newpercent;
-			emit progress(percent);
-			//qDebug("Time elapsed: %d ms", t.elapsed());
-		}
-	}
-
-	emit processFinished(this);
-}
-*/
-
 
 void LasReader::readPointsData(int filterLevel)
 {
@@ -336,11 +219,9 @@ void LasReader::readPointsData(int filterLevel)
 			printf("*** Z out of range, %f [%f - %f]\n", z, m_header.m_minZ, m_header.m_maxZ);
 			continue;
 		}
-		z -= adjCoord.adjZ;
+		// z -= adjCoord.adjZ;     //高度不需要调整
 
 		int classify = (int)pPoint->m_classification;
-
-		// if (classify != 31) continue;
 
 		osg::ref_ptr<LodGroup> pcl;
 		if (m_lodLayers.find(classify) != m_lodLayers.end())
@@ -415,7 +296,6 @@ void LasReader::readPointsData(int filterLevel)
 		if( lodgroup->m_layerList.find(filterLevel) != lodgroup->m_layerList.end())
 		{
 			lodgroup->finishAddPoints(filterLevel);
-			// emit processFinished(this, lodgroup);
 		}
 	}
 	emit processFinished(m_minInten, m_maxInten, m_minAltitude, m_maxAltitude);
@@ -427,7 +307,6 @@ void LasReader::readLodRemainLayer(int level)
 	{
 		readPointsData(i);
 	}
-	// readPointsData(level);
 }
 
 void LasReader::setIntentRange(int max, int min, int mode)

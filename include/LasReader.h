@@ -9,7 +9,6 @@
 #include <QLineSeries>
 #include <QMutex>
 #include "lasFileStruct.h"
-#include "PointCloudLayer.h"
 #include "LodGroup.h"
 
 typedef struct _ExpParam{
@@ -43,12 +42,8 @@ public:
 	~LasReader();
 
 	AsprsLasFile::LasHeader *getHeader();
-	// std::map<int, osg::ref_ptr<PointCloudLayer>> readPointsLayers(){ return m_layers; };
-	// std::map<int, osg::ref_ptr<LodGroup>> *readPointsLodLayers(){ return &m_lodLayers; };
 	int getMaxIntent(){ return m_maxInten; };
 	int getMinIntent(){ return m_minInten; };
-	// int getThinFactor(){ return m_thinfactor; };
-	// void setThinFactor(int thinfactor){ m_thinfactor = thinfactor; };
 
 	void setIntentRange(int max, int min, int mode);
 	void setAltitudeRange(double maxAl, double minAl, int mode);
@@ -73,8 +68,7 @@ public:
 	static void resetAdjCoord() { adjCoord.bInit = false;};
 
 	void readLodRemainLayer(int level);
-	//QLineSeries *getIntentCurve();
-	//QLineSeries *getAltitudeCurve();
+
 signals:
 	void progress(int);
 	void processFinished(int, int, double, double);
@@ -91,7 +85,6 @@ private:
 	static QMutex m_mutex;
 
 	bool m_bigEndian;
-	// int m_thinfactor;
 	int m_maxInten;
 	int m_minInten;
 	double m_minAltitude;
@@ -100,7 +93,6 @@ private:
 	AsprsLasFile::LasHeader *m_pHeader;
 	AsprsLasFile::LasHeader m_header;
 
-	// std::map<int, osg::ref_ptr<PointCloudLayer>> m_layers;
 	std::map<int, osg::ref_ptr<LodGroup>> m_lodLayers;
 
 	osg::ref_ptr<osg::StateSet> m_stateSet;
@@ -117,12 +109,5 @@ private:
 	static AdjustCoordinate adjCoord;
 
 };
-
-
-// class LasReaderPool : public QThreadPool
-// {
-
-
-// };
 	
 #endif //__LasReader_H_SPARCLE_2019_01_23

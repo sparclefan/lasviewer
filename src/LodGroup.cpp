@@ -1,3 +1,5 @@
+#pragma execution_character_set("utf-8")
+
 #include "LodGroup.h"
 #include <osg/Geode>
 #include <osg/Switch>
@@ -7,19 +9,17 @@ LodGroup::LodGroup(int classify, int firstLevel, osg::Group *parentNode)
     :m_classifier(classify), m_firstLevel(firstLevel),maxIntent(0),minIntent(100),
     colorMode(OverAll), m_parentNode(parentNode)
 {
-    // osg::ref_ptr<osg::Switch> classifySwitch = new osg::Switch();
     m_parentNode->addChild(this);
-    // classifySwitch->addChild(this);
 
     setRangeMode(osg::LOD::DISTANCE_FROM_EYE_POINT);
     // setCenterMode(osg::LOD::USE_BOUNDING_SPHERE_CENTER);
     setCenterMode(osg::LOD::USER_DEFINED_CENTER);
-    printf("=====LodGroup construct classifier %d\n", m_classifier);
+    // printf("=====LodGroup construct classifier %d\n", m_classifier);
 }
 
 LodGroup::~LodGroup()
 {
-    printf("#####LodGroup destruct classifier %d\n", m_classifier);
+    // printf("#####LodGroup destruct classifier %d\n", m_classifier);
 }
 
 void LodGroup::traverse(osg::NodeVisitor& nv)
@@ -58,7 +58,6 @@ LodLayer *LodGroup::getLayer(int level, osg::StateSet *stateSet)
         return m_layerList[level];
     }
 
-    // osg::ref_ptr<LodLayer> layer = new LodLayer(level, stateSet);
     LodLayer *layer = new LodLayer(this, level, stateSet);
     m_layerList[level] = layer;
 
@@ -69,9 +68,6 @@ void LodGroup::finishAddPoints(int level)
 {
     osg::ref_ptr<LodLayer> layer = m_layerList[level];
     layer->finishAddPoints(m_firstLevel);
-
-    // layer->m_geode->addDrawable(layer->getGeometry());
-    // addChild(layer->m_geode.get(),0, LEVEL_DISTANSE[level-m_firstLevel]);
 
     switch(colorMode)
     {

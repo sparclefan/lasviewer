@@ -1,4 +1,6 @@
-﻿#include <QApplication>
+﻿#pragma execution_character_set("utf-8")
+
+#include <QApplication>
 #include <QTextCodec>
 #include "MainWindow.h"
 

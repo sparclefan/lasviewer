@@ -1,4 +1,6 @@
-﻿#include "ClassifyLayers.h"
+﻿#pragma execution_character_set("utf-8")
+
+#include "ClassifyLayers.h"
 
 ClassifyLayers::ClassifyLayers(int classify)
 :m_classify(classify)

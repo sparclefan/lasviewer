@@ -2,7 +2,7 @@
 #define __LASVIWER_ClassifyLayers_H_SPARCLE_2020_11_19
 
 #include <osg/Switch>
-#include "PointCloudLayer.h"
+#include <QString>
 
 class ClassifyLayers : public osg::Referenced
 {

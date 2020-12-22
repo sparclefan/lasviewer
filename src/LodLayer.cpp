@@ -1,3 +1,5 @@
+#pragma execution_character_set("utf-8")
+
 #include "LodLayer.h"
 #include "ColorUtils.h"
 #include <osg/LOD>
@@ -8,19 +10,17 @@ LodLayer::LodLayer(osg::LOD *parentNode, int level, osg::StateSet *stateSet)
 	m_minIntent(0), m_maxIntent(0), m_minAltitude(0), m_maxAltitude(0),
 	m_parentNode(parentNode)
 {
-    // m_pointsGeode = new osg::Geode;
-    // m_pointsGeometry = new osg::Geometry;
     m_pointsVertices = new osg::Vec3Array;
     m_geode = new osg::Geode;
     m_geode->setStateSet(stateSet);
 
-	printf("LodLayer construct level %d\n", m_level);
+	// printf("LodLayer construct level %d\n", m_level);
 
 }
 
 LodLayer::~LodLayer()
 {
-	printf("******LodLayer desctruct level %d\n", m_level);
+	// printf("******LodLayer desctruct level %d\n", m_level);
 }
 
 int LodLayer::preferLevel(unsigned int pointNumber){
@@ -57,10 +57,7 @@ void LodLayer::finishAddPoints(int firstLevel)
 	osg::BoundingSphere bs = m_geode->getBound();
 	osg::Vec3 c = bs.center();
 
-	printf("boundspere: center %f, %f, %f, rad: %f\n", c.x(), c.y(), c.z(), bs.radius());
-
-	// m_parentNode->addChild( m_geode.get());
-
+	// printf("boundspere: center %f, %f, %f, rad: %f\n", c.x(), c.y(), c.z(), bs.radius());
 }
 
 osg::Geometry *LodLayer::getGeometry()
@@ -133,12 +130,9 @@ void LodLayer::setIntentColor(int mode, int minIntent, int maxIntent)
 		m_maxIntent = maxIntent;
 	}
 
-	// if (colorMode != Intent)
-	// {
-		m_pointsGeometry->setColorArray(PointsIntentColor.get());
-		m_pointsGeometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-		colorMode = Intent;
-	// }
+	m_pointsGeometry->setColorArray(PointsIntentColor.get());
+	m_pointsGeometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+	colorMode = Intent;
 }
 
 void LodLayer::setAltitudeColor(int mode, double minAltitude, double maxAltitude)

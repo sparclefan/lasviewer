@@ -21,7 +21,7 @@ enum RenderColorMode {
 	Rgb
 };
 
-#define OPTIMUM_POINT_NUMBER 100000
+#define OPTIMUM_POINT_NUMBER 1000000
 
 class LodGroup;
 
