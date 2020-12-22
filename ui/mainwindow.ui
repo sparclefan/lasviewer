@@ -42,6 +42,7 @@
      <string>视图</string>
     </property>
     <addaction name="actionLasInfo"/>
+    <addaction name="actionResetmap"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
@@ -65,44 +66,7 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_18">
-         <item>
-          <widget class="QLabel" name="label_16">
-           <property name="text">
-            <string>抽稀比例</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="cb_thinning">
-           <item>
-            <property name="text">
-             <string>1</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>2</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>5</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>10</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>30</string>
-            </property>
-           </item>
-          </widget>
-         </item>
-        </layout>
+        <layout class="QHBoxLayout" name="horizontalLayout_18"/>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_19">
@@ -196,7 +160,7 @@
           <item>
            <widget class="QLabel" name="lb_minIntent">
             <property name="text">
-             <string>0</string>
+             <string>100</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -219,7 +183,7 @@
           <item>
            <widget class="QLabel" name="lb_maxIntent">
             <property name="text">
-             <string>100</string>
+             <string>0</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -316,7 +280,7 @@
           <item>
            <widget class="QLabel" name="lb_maxAltitude">
             <property name="text">
-             <string>100</string>
+             <string>0</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -487,6 +451,11 @@
    </property>
    <property name="text">
     <string>选项</string>
+   </property>
+  </action>
+  <action name="actionResetmap">
+   <property name="text">
+    <string>重置全图</string>
    </property>
   </action>
  </widget>

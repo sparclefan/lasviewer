@@ -12,7 +12,7 @@
 
 
 MainWindow::MainWindow()
-	:QMainWindow(), m_workPath(""), m_thinFactor(10)
+	:QMainWindow(), m_workPath(""), m_thinFactor(10), m_bInitView(false)
 {
 	ui = new Ui::MainWindow();
 	ui->setupUi(this);
@@ -25,11 +25,11 @@ MainWindow::MainWindow()
 
 	m_osgViewer = new QtOsgViewer(this);
 	ui->horizontalLayout->addWidget(m_osgViewer);
-	ui->cb_thinning->setCurrentText("10");
+	// ui->cb_thinning->setCurrentText("10");
 	ui->tableWidget->verticalHeader()->hide();
 	ui->tableWidget->setColumnWidth(0, 35);
 	ui->tableWidget->setColumnWidth(1, 35);
-	ui->cb_thinning->setCurrentText(QString("%1").arg(m_thinFactor));
+	// ui->cb_thinning->setCurrentText(QString("%1").arg(m_thinFactor));
 	m_progress = new QProgressBar(this);
 	m_progress->setFormat("%p%");
 	m_progress->setMinimum(0);
@@ -50,7 +50,7 @@ MainWindow::MainWindow()
 	connect(ui->cb_IndentColorSet, SIGNAL(currentIndexChanged(int)), this, SLOT(on_IntentColorSetChanged(int)));
 	connect(ui->cb_AltitudeColorSet, SIGNAL(currentIndexChanged(int)), this, SLOT(on_AltitudeColorSetChanged(int)));
 	connect(ui->cb_pointSize, SIGNAL(currentIndexChanged(int)), this, SLOT(on_pointSizeChanged(int)));
-	connect(ui->cb_thinning, SIGNAL(currentIndexChanged(int)), this, SLOT(on_thinFactorChanged(int)));
+	// connect(ui->cb_thinning, SIGNAL(currentIndexChanged(int)), this, SLOT(on_thinFactorChanged(int)));
 	connect(ui->tableWidget, SIGNAL(cellChanged(int,int)), this, SLOT(on_tableCellChanged(int, int)));
 	connect(m_dlgLasInfo, SIGNAL(hideDlg()), this, SLOT(on_dlgLasInfoHide()));
 	connect(this, SIGNAL(intentRangeChanged(int, int)), m_dlgLasInfo, SLOT(on_intentRangeChanged(int, int)));
@@ -77,6 +77,14 @@ MainWindow::~MainWindow()
 
 }
 
+void MainWindow::initIntentAltitudeRange()
+{
+	ui->lb_minIntent->setText("100");
+	ui->lb_maxIntent->setText("0");
+	ui->lb_maxAltitude->setText("0");
+	ui->lb_minAltitude->setText("100");
+}
+
 void MainWindow::readSetting()
 {
 	QSettings settings("Yupont", "lasViewer");
@@ -84,9 +92,9 @@ void MainWindow::readSetting()
 	if (settings.contains("workPath")){
 		m_workPath = settings.value("workPath").toString();
 	}
-	if (settings.contains("thinFactor")){
-		m_thinFactor = settings.value("thinFactor").toInt();
-	}
+	// if (settings.contains("thinFactor")){
+	// 	m_thinFactor = settings.value("thinFactor").toInt();
+	// }
 
 	settings.endGroup();
 }
@@ -96,7 +104,7 @@ void MainWindow::writeSetting()
 	QSettings settings("Yupont", "lasViewer");
 	settings.beginGroup("config");
 	settings.setValue("workPath", m_workPath);
-	settings.setValue("thisFactor", m_thinFactor);
+	// settings.setValue("thisFactor", m_thinFactor);
 	settings.endGroup();
 }
 
@@ -132,39 +140,29 @@ void MainWindow::on_colorModeChanged(int id)
 {
 	for(auto it: m_lasReaders){
 		LasReader *reader = it.second;
-		std::map<int, osg::ref_ptr<PointCloudLayer>> layers = reader->readPointsLayers();
 
-		for (auto itl : layers)
+		switch (id)
 		{
-			osg::ref_ptr<PointCloudLayer> layer = itl.second;
-			int classify = itl.first;
-			int classid = classify > 31 ? 31 : classify;
-			switch (id)
-			{
-				case 0: // 强度
-					layer->setIntentColor((IntentColorCallBack)(&ColorUtils::getIntentColor), ui->cb_IndentColorSet->currentIndex());
-					break;
-				case 1: // 高程
-					layer->setAltitudeColor((IntentColorCallBack)(&ColorUtils::getIntentColor), ui->cb_AltitudeColorSet->currentIndex());
-					break;
-				case 2: // 高程+强度
-					layer->setBlendColor((BlendColorCallBack)(&ColorUtils::getBlendColor),
-						ui->cb_IndentColorSet->currentIndex(), ui->cb_AltitudeColorSet->currentIndex());
-					break;
-				case 3: // 分类
-					layer->setOverallColor(classifyColor[classid].color);
-					break;
-				case 4: // RGB
-					layer->setRGBColor();
-					break;
-				default:
-					layer->setOverallColor(QColor(255, 255, 255));
-					break;
-				}
+			case 0: // 强度
+				reader->setIntentColor(ui->cb_IndentColorSet->currentIndex());
+				break;
+			case 1: // 高程
+				reader->setAltitudeColor(ui->cb_AltitudeColorSet->currentIndex());
+				break;
+			case 2: // 高程+强度
+				reader->setBlendColor(ui->cb_IndentColorSet->currentIndex(), ui->cb_AltitudeColorSet->currentIndex());
+				break;
+			case 3: // 分类
+				reader->setClassifyColor();
+				break;
+			case 4: // RGB
+				reader->setRGBColor();
+				break;
+			default:
+				reader->setOverallColor(QColor(255, 255, 255));
+				break;
 		}		
-
 	}
-
 
 	if (m_osgViewer)
 		m_osgViewer->requestRedraw();
@@ -186,6 +184,18 @@ void MainWindow::on_intentRangeChanged(int minIntent, int maxIntent)
 {
 	ui->lb_minIntent->setText(QString("%1").arg(minIntent));
 	ui->lb_maxIntent->setText(QString("%1").arg(maxIntent));
+
+	for(auto it: m_lasReaders){
+		LasReader *reader = it.second;
+		reader->setIntentRange(maxIntent, minIntent, ui->cb_IndentColorSet->currentIndex());
+		// std::map<int, osg::ref_ptr<LodGroup>> *layers = reader->readPointsLodLayers();
+		// for (auto itl : *layers)
+		// {
+		// 	osg::ref_ptr<LodGroup> layer = itl.second;
+		// 	layer->setIntentRange(maxIntent, minIntent, ui->cb_IndentColorSet->currentIndex());
+		// }
+	}
+
 }
 
 void MainWindow::on_altitudeRangeChanged(int minAlt, int maxAlt)
@@ -195,13 +205,14 @@ void MainWindow::on_altitudeRangeChanged(int minAlt, int maxAlt)
 
 	for(auto it: m_lasReaders){
 		LasReader *reader = it.second;
-		std::map<int, osg::ref_ptr<PointCloudLayer>> layers = reader->readPointsLayers();
+		reader->setAltitudeRange(maxAlt, minAlt, ui->cb_AltitudeColorSet->currentIndex());
+		// std::map<int, osg::ref_ptr<LodGroup>> *layers = reader->readPointsLodLayers();
 
-		for (auto itl : layers)
-		{
-			osg::ref_ptr<PointCloudLayer> layer = itl.second;
-			layer->setAltitudeRange(maxAlt, minAlt, (IntentColorCallBack)(&ColorUtils::getIntentColor), ui->cb_AltitudeColorSet->currentIndex());
-		}
+		// for (auto itl : *layers)
+		// {
+		// 	osg::ref_ptr<LodGroup> layer = itl.second;
+		// 	layer->setAltitudeRange(maxAlt, minAlt, ui->cb_AltitudeColorSet->currentIndex());
+		// }
 	}
 }
 
@@ -231,25 +242,11 @@ void MainWindow::onProgress(int percent)
 	m_progress->setValue(percent);
 }
 
-void MainWindow::on_thinFactorChanged(int id)
+void MainWindow::on_actionResetmap_triggered()
 {
-	m_thinFactor = ui->cb_thinning->currentText().toInt();
-	
-	for( auto it : m_fileGroups )
-	{
-		osg::ref_ptr<osg::Group> group = it.second;
-		root->removeChild(group);
-	}
-	std::map<QString, osg::ref_ptr<osg::Switch>> empty;
-	m_fileGroups.swap(empty);
-	ui->lw_fileList->clear();
-
-	for( auto it : m_lasReaders )
-	{
-		LasReader *reader = it.second;
-		reader->setThinFactor(m_thinFactor);
-
-		reader->start();
+	if (m_osgViewer){
+		printf("reset map....\n");
+		m_osgViewer->getCameraManipulator()->home(0.0);
 	}
 }
 
@@ -271,11 +268,23 @@ void MainWindow::on_actionOpen_triggered()
 			continue;
 		}
 
-		LasReader *reader = new LasReader(filename);
-		reader->setThinFactor(m_thinFactor);
+		osg::ref_ptr<Switch> filegroup = new osg::Switch();
+		m_fileGroups[filename] = filegroup;
 
+		osg::ref_ptr<Group> group = new osg::Group();
+		filegroup->addChild(group);
+		root->addChild(filegroup);
+
+		QListWidgetItem *item = new QListWidgetItem(finfo.baseName());
+		item->setToolTip(filename);
+		ui->lw_fileList->addItem(item);
+
+		LasReader * reader = new LasReader(filename, group, set);
+		
+		// reader->setStateSet(set.get());
 		connect(reader, SIGNAL(progress(int)), this, SLOT(onProgress(int)));
-		connect(reader, SIGNAL(processFinished(LasReader *)), this, SLOT(onReadFinished(LasReader *)));
+		connect(reader, SIGNAL(processFinished(int, int, double, double)), this, SLOT(onReadFinished(int, int, double, double)));
+		connect(reader, SIGNAL(newClassifyLayerAdded(QString, osg::Switch *, int)), this, SLOT(onNewLayerAdded(QString, osg::Switch *, int)));
 
 		m_lasReaders[filename] = reader;
 
@@ -284,105 +293,110 @@ void MainWindow::on_actionOpen_triggered()
 
 }
 
-void MainWindow::onReadFinished(LasReader *reader)
+void MainWindow::onNewLayerAdded(QString filename, osg::Switch *layerSwitch, int classify)
 {
-	ui->statusbar->showMessage("Ready");
-	m_progress->setValue(100);
+	// QString filename = reader->filePath();
 
-	QString filename = reader->filePath();
-	osg::ref_ptr<Switch> filegroup = new osg::Switch();
-	osg::ref_ptr<Group> group = new osg::Group();
-	filegroup->addChild(group);
-	root->addChild(filegroup);
+	// osg::ref_ptr<Group> group;
+	// if (m_fileGroups.find(filename) == m_fileGroups.end())
+	// {
+	// 	osg::ref_ptr<Switch> filegroup = new osg::Switch();
+	// 	root->addChild(filegroup);
 
-	QFileInfo finfo(filename);
-	QListWidgetItem *item = new QListWidgetItem(finfo.baseName());
-	item->setToolTip(filename);
-	ui->lw_fileList->addItem(item);
+	// 	group = new osg::Group();
+	// 	filegroup->addChild(group);
 
-	std::map<int, osg::ref_ptr<PointCloudLayer>> layers = reader->readPointsLayers();
+	// 	QFileInfo finfo(filename);
+	// 	QListWidgetItem *item = new QListWidgetItem(finfo.baseName());
+	// 	item->setToolTip(filename);
+	// 	ui->lw_fileList->addItem(item);
+
+	// 	m_fileGroups[filename] = filegroup;
+	// }
+	// else {
+	// 	osg::ref_ptr<Switch> filegroup = m_fileGroups[filename];
+	// 	group = dynamic_cast<osg::Group *>(filegroup->getChild(0));
+	// }
+
+	// osg::ref_ptr<Switch> layerswitch = new osg::Switch();
+	// group->addChild(layerswitch);
+	// layerswitch->addChild(layer);
 
 	int row;
-	for (auto it : layers)
-	{
-		osg::ref_ptr<PointCloudLayer> layer = it.second;
-		
-		osg::ref_ptr<Switch> layerswitch = new osg::Switch();
-		group->addChild(layerswitch);
-
-		osg::ref_ptr<osg::Geode> pointsGeode = new osg::Geode();
-		pointsGeode->setStateSet(set.get());
-		layerswitch->addChild(pointsGeode.get());
-		pointsGeode->addDrawable(layer->getGeometry());
-
-		int classify = it.first;
-		osg::ref_ptr<ClassifyLayers> classifyLayer;
-		if( m_classifyLayers.find(classify) != m_classifyLayers.end()){
-			classifyLayer = m_classifyLayers[classify];
-			QList<QTableWidgetItem *> list = ui->tableWidget->findItems(QString("%1").arg(classify), Qt::MatchExactly);
-			row = ui->tableWidget->row(list[0]);
-		}else{
-			classifyLayer = new ClassifyLayers(classify);
-			m_classifyLayers[classify] = classifyLayer;
-
-			row = ui->tableWidget->rowCount();
-			ui->tableWidget->setRowCount(row + 1);
-
-			int id = classify>31 ? 31 : classify;
-			QTableWidgetItem *item = new QTableWidgetItem();
-			item->setBackground(classifyColor[id].color);
-			ui->tableWidget->setItem(row, 1, item);
-
-			if (classify < 32)
-				item = new QTableWidgetItem(Tr(classifyColor[classify].name));
-			else
-				item = new QTableWidgetItem(Tr("未定义类别"));
-			ui->tableWidget->setItem(row, 2, item);
-
-			item = new QTableWidgetItem(QString("%1").arg(classify));
-			ui->tableWidget->setItem(row, 3, item);
-
-			item = new QTableWidgetItem();
-			item->setCheckState(Qt::Checked);
-			ui->tableWidget->setItem(row, 0, item);
-		}
-		classifyLayer->addLayer(filename, layerswitch);
-
-		// item = new QTableWidgetItem(QString("%1").arg(layer->getPointNumber()));
-		// ui->tableWidget->setItem(row, 2, item);
+	osg::ref_ptr<ClassifyLayers> classifyLayer;
+	if (m_classifyLayers.find(classify) != m_classifyLayers.end()) {
+		classifyLayer = m_classifyLayers[classify];
+		QList<QTableWidgetItem *> list = ui->tableWidget->findItems(QString("%1").arg(classify), Qt::MatchExactly);
+		row = ui->tableWidget->row(list[0]);
 	}
+	else {
+		classifyLayer = new ClassifyLayers(classify);
+		m_classifyLayers[classify] = classifyLayer;
 
-	AsprsLasFile::LasHeader *header = reader->getHeader();
+		row = ui->tableWidget->rowCount();
+		ui->tableWidget->setRowCount(row + 1);
 
-	if( m_fileGroups.empty()){
-		m_osgViewer->getCameraManipulator()->home(0.0);	
-		emit altitudeRangeChanged(header->m_minZ, header->m_maxZ);
-	}else{
+		int id = classify > 31 ? 31 : classify;
+		QTableWidgetItem *item = new QTableWidgetItem();
+		item->setBackground(classifyColor[id].color);
+		ui->tableWidget->setItem(row, 1, item);
+
+		if (classify < 32)
+			item = new QTableWidgetItem(Tr(classifyColor[classify].name));
+		else
+			item = new QTableWidgetItem(Tr("未定义类别"));
+		ui->tableWidget->setItem(row, 2, item);
+
+		item = new QTableWidgetItem(QString("%1").arg(classify));
+		ui->tableWidget->setItem(row, 3, item);
+
+		item = new QTableWidgetItem();
+		item->setCheckState(Qt::Checked);
+		ui->tableWidget->setItem(row, 0, item);
+	}
+	classifyLayer->addLayer(filename, layerSwitch);
+
+}
+
+void MainWindow::onReadFinished(int minIntent, int maxIntent, double minAltitude, double maxAltitude)
+{
+	if (!m_bInitView ) {
+		m_osgViewer->getCameraManipulator()->home(0.0);
+		emit altitudeRangeChanged((int)minAltitude, (int)maxAltitude);
+		emit intentRangeChanged(minIntent, maxIntent);
+		m_bInitView = true;
+	}
+	else {
+
 		double minZ = ui->lb_minAltitude->text().toDouble();
 		double maxZ = ui->lb_maxAltitude->text().toDouble();
 
-		if( header->m_minZ < minZ || header->m_maxZ > maxZ )
+		if (minAltitude < minZ || maxAltitude > maxZ)
 		{
-			if( header->m_minZ < minZ )
-				minZ = header->m_minZ;
-			if( header->m_maxZ > maxZ )
-				maxZ = header->m_maxZ;
+			if (minAltitude < minZ)
+				minZ = minAltitude;
+			if (maxAltitude > maxZ)
+				maxZ = maxAltitude;
 			emit altitudeRangeChanged(minZ, maxZ);
-		}else{
-			for (auto itl : layers)
-			{
-				osg::ref_ptr<PointCloudLayer> layer = itl.second;
-				layer->setAltitudeRange(maxZ, minZ, (IntentColorCallBack)(&ColorUtils::getIntentColor), ui->cb_AltitudeColorSet->currentIndex());
-			}			
 		}
+		// else {
+		// 	reader->setAltitudeRange(maxZ, minZ, ui->cb_AltitudeColorSet->currentIndex());
+		// }
+
+		int maxIn = ui->lb_maxIntent->text().toInt();
+		int minIn = ui->lb_minIntent->text().toInt();
+		if (maxIntent > maxIn || minIntent < minIn) {
+			if (minIntent < minIn)
+				minIn = minIntent;
+			if (maxIntent > maxIn)
+				maxIn = maxIntent;
+			emit intentRangeChanged(minIn, maxIn);
+		}
+		// else {
+		// 	reader->setIntentRange(maxIn, minIn, ui->cb_IndentColorSet->currentIndex());
+		// }
 	}
-
-	m_fileGroups[filename] = filegroup;
-
-
 	on_colorModeChanged(ui->cb_colorMode->currentIndex());
-
-	emit intentRangeChanged(reader->getMinIntent(), reader->getMaxIntent());
 }
 
 void MainWindow::filelist_showmenu(QPoint pt)
@@ -437,6 +451,7 @@ void MainWindow::closeFile(QListWidgetItem *item)
 	delete reader;
 	m_lasReaders.erase(filename);
 
+	QList<int> delList;
 	for( auto it : m_classifyLayers)
 	{
 		osg::ref_ptr<ClassifyLayers> layer = it.second;
@@ -446,13 +461,23 @@ void MainWindow::closeFile(QListWidgetItem *item)
 			QList<QTableWidgetItem *> list = ui->tableWidget->findItems(QString("%1").arg(classify), Qt::MatchExactly);
 			int row = ui->tableWidget->row(list[0]);
 			ui->tableWidget->removeRow(row);
-
-			m_classifyLayers.erase(classify);
-
+			delList.push_back(it.first);
 		}
 	}
 
+	for (auto c : delList)
+	{
+		m_classifyLayers.erase(c);
+	}
+	//std::map<int, osg::ref_ptr<ClassifyLayers>> empty;
+	//m_classifyLayers.swap(empty);
+
 	ui->lw_fileList->takeItem(ui->lw_fileList->row(item));
+
+	if(m_fileGroups.empty()){
+		LasReader::resetAdjCoord();
+		initIntentAltitudeRange();
+	}
 
 	m_osgViewer->requestRedraw();
 

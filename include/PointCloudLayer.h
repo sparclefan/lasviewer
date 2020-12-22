@@ -4,12 +4,11 @@
 #include <osg/Point>
 #include <osg/Array>
 #include <osg/Geometry>
+#include <osg/LOD>
 #include <QColor>
+#include <QList>
 
 class LasReader;
-
-typedef QColor(*IntentColorCallBack)(double intentfactor, int mode);
-typedef QColor(*BlendColorCallBack)(double factorIntent, double factorAltitude, int modeIntent, int modeAltitude);
 
 class PointCloudLayer : public osg::Referenced{
 	friend class LasReader;
@@ -19,11 +18,15 @@ public:
 	int getPointNumber(){ return pointNumber; };
 
 	void setOverallColor(QColor color);
-	void setIntentColor(IntentColorCallBack callback, int mode);
-	void setAltitudeColor(IntentColorCallBack callback, int mode);
-	void setAltitudeRange(double maxAl, double minAl, IntentColorCallBack callback, int mode);
-	void setBlendColor(BlendColorCallBack callback, int modeIntent, int modeAltitude);
+	void setIntentColor(int mode);
+	void setAltitudeColor(int mode);
+	void setAltitudeRange(double maxAl, double minAl, int mode);
+	void setIntentRange(int max, int min, int mode);
+	void setBlendColor(int modeIntent, int modeAltitude);
 	void setRGBColor();
+
+	inline int getMaxIntent() const { return maxIntent;};
+	inline int getMinIntent() const { return minIntent;};
 
 private:
 
@@ -33,8 +36,8 @@ private:
 	osg::ref_ptr<osg::Vec4Array> PointsAltitudeColor;
 	osg::ref_ptr<osg::Vec4Array> PointsBlendColor;
 	osg::ref_ptr<osg::Vec4Array> PointsRGB;
-	std::vector<double> m_intentFactors;
-	std::vector<double> m_altitudeFactors;
+	QList<int> m_intents;
+	// QList<double> m_altitudeFactors;
 	int pointNumber;
 	int intentColorMode;
 	int altitudeColorMode;
@@ -42,10 +45,11 @@ private:
 	int blAltitudeColorMode;
 	int classifier;
 
-	double maxIntent;
-	double minIntent;
+	int maxIntent;
+	int minIntent;
 	double maxAltitude;
 	double minAltitude;
 };
+
 	
 #endif //__PointCloudLayer_h_SPAECLE_2019_1_28

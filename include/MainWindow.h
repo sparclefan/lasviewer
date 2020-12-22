@@ -46,6 +46,7 @@ public:
 
 public slots:
 	void on_actionLasInfo_triggered();
+	void on_actionResetmap_triggered();
 	void on_actionOpen_triggered();
 	void on_intentRangeChanged(int minIntent, int maxIntent);
 	void on_altitudeRangeChanged(int minAlt, int maxAlt);
@@ -54,10 +55,11 @@ public slots:
 	void on_AltitudeColorSetChanged(int id);
 	void on_pointSizeChanged(int id);
 	void on_tableCellChanged(int row, int coloumn);
-	void on_thinFactorChanged(int id);
+	// void on_thinFactorChanged(int id);
 
 	void onProgress(int percent);
-	void onReadFinished(LasReader *reader);
+	void onReadFinished(int minIntent, int maxIntent, double minAltitude, double maxAltitude);
+	void onNewLayerAdded(QString filename, osg::Switch *layerSwitch, int classify);
 
 	void on_dlgLasInfoHide();
 
@@ -75,6 +77,7 @@ private:
 	DlgLasInfo *m_dlgLasInfo;
 
 	std::map<QString, osg::ref_ptr<osg::Switch>> m_fileGroups;
+	// std::map<QString, osg::ref_ptr<LasReader>> m_lasReaders;
 	std::map<QString, LasReader *> m_lasReaders;
 	std::map<int, osg::ref_ptr<ClassifyLayers>> m_classifyLayers;
 
@@ -88,10 +91,12 @@ private:
 
 	void readSetting();
 	void writeSetting();
+	void initIntentAltitudeRange();
 
 	void drawColorPalette(QLabel *pal, int mode);
 
 	int m_thinFactor;
+	bool m_bInitView;
 
 	QString m_workPath;
 
