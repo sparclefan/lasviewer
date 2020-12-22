@@ -1,5 +1,5 @@
 ﻿#include "LasReader.h"
-#include <QTime>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QDebug>
 #include <QApplication>
@@ -106,7 +106,7 @@ LasHeader *LasReader::getHeader()
 void LasReader::run()
 {
 	QMutexLocker lock(&m_mutex);
-	QTime t;
+	QElapsedTimer t;
 	t.start();
 	std::map<int, osg::ref_ptr<PointCloudLayer>>().swap(m_layers);
 

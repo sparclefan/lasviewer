@@ -21,8 +21,10 @@ SET(QT_USE_QTMAIN TRUE)
 
 #-------- OSG ----------------
 set(CMAKE_PREFIX_PATH $ENV{OSG_DIR})
+#find_package(OpenSceneGraph 3.0.0 REQUIRED 
+#	osgDB osgGA osgUtil osgText osgViewer)
 find_package(OpenSceneGraph 3.0.0 REQUIRED 
-	osgDB osgGA osgUtil osgText osgViewer)
+	 osgGA  osgViewer)
 include_directories(${OSG_INCLUDE_DIR})
 link_libraries(${OPENSCENEGRAPH_LIBRARIES})
 
